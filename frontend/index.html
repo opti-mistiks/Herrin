@@ -2054,7 +2054,13 @@
         </div>`;
     }).join('');
 
-    shell(`<div class="topics-grid">${cards}</div>`);
+    const isGuest2 = !auth.currentUser;
+    shell(`
+      ${isGuest2 ? `<div class="home-hero">
+        <h1>Вивчай <em>Граматику</em><br>дієслів</h1>
+        <p>Відмінювання та часи — вивчай граматику дієслів по темах</p>
+      </div>` : ''}
+      <div class="topics-grid">${cards}</div>`);
 
     const sy = parseInt(sessionStorage.getItem('_scrollY') || '0');
     if (sy && sessionStorage.getItem('_lastSection') === 'grammar-verbs') {
@@ -2087,7 +2093,13 @@
         </div>`;
     }).join('');
 
-    shell(`<div class="topics-grid">${cards}</div>`);
+    const isGuest1 = !auth.currentUser;
+    shell(`
+      ${isGuest1 ? `<div class="home-hero">
+        <h1>Вивчай <em>Граматику</em><br>іменників</h1>
+        <p>Відмінювання, артиклі та форми — вивчай граматику по темах</p>
+      </div>` : ''}
+      <div class="topics-grid">${cards}</div>`);
 
     const sy = parseInt(sessionStorage.getItem('_scrollY') || '0');
     if (sy && sessionStorage.getItem('_lastSection') === 'grammar') {
