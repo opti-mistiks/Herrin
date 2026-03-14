@@ -823,8 +823,8 @@ app.post('/api/generate-forms', requireAdmin, async (req, res) => {
   const { topicId } = req.body;
   if (!topicId) return res.status(400).json({ error: 'topicId required' });
 
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not set' });
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_KEY) return res.status(500).json({ error: 'GROQ_API_KEY not set' });
 
   try {
     // 1. Load topic
@@ -845,27 +845,28 @@ app.post('/api/generate-forms', requireAdmin, async (req, res) => {
       isVerbs ? w.german : (w.article ? `${w.article} ${w.german}` : w.german)
     ).join('\n');
 
-    // 4. Call Gemini API
-    const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ parts: [{ text: `Згенеруй форми для цих слів:\n${wordList}` }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
-        }),
-      }
-    );
+    // 4. Call Groq API
+    const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Згенеруй форми для цих слів:\n${wordList}` },
+        ],
+        temperature: 0.1,
+        max_tokens: 8192,
+      }),
+    });
 
     if (!aiRes.ok) {
       const err = await aiRes.text();
-      return res.status(502).json({ error: `Gemini API error: ${err}` });
+      return res.status(502).json({ error: `Groq API error: ${err}` });
     }
 
     const aiData = await aiRes.json();
-    const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawText = aiData.choices?.[0]?.message?.content || '';
 
     // 5. Parse JSON
     let formsArray;
@@ -927,15 +928,15 @@ app.post('/api/generate-words', requireAdmin, async (req, res) => {
   const { topicNameUk, topicNameDe, category, count, existingWords } = req.body;
   if (!topicNameUk) return res.status(400).json({ error: 'topicNameUk required' });
 
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not set' });
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_KEY) return res.status(500).json({ error: 'GROQ_API_KEY not set' });
 
   const isVerbs = category === 'verbs';
   const n = Math.min(Math.max(parseInt(count) || 15, 1), 50);
   const existingGerman = (existingWords || []).map(w => w.german?.toLowerCase()).filter(Boolean);
 
   try {
-    // Step 1: Gemini generates words
+    // Step 1: Groq generates words
     const prompt = isVerbs
       ? `Ти — експерт з німецької мови. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${n} різних дієслів.
 Вже існують в базі: ${existingGerman.length ? existingGerman.join(', ') : 'немає'} — НЕ повторюй їх.
@@ -948,26 +949,25 @@ app.post('/api/generate-words', requireAdmin, async (req, res) => {
 [{"article":"die","german":"Mutter","ukrainian":"мати"},...]
 Правила: правильний артикль (der/die/das), тільки реальні слова, без дублікатів.`;
 
-    const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
-        }),
-      }
-    );
-    if (!aiRes.ok) return res.status(502).json({ error: 'Gemini error: ' + await aiRes.text() });
+    const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 4096,
+      }),
+    });
+    if (!aiRes.ok) return res.status(502).json({ error: 'Groq error: ' + await aiRes.text() });
     const aiData = await aiRes.json();
-    const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawText = aiData.choices?.[0]?.message?.content || '';
     let words;
     try {
       words = JSON.parse(rawText.replace(/```json|```/g, '').trim());
       if (!Array.isArray(words)) throw new Error('not array');
     } catch {
-      return res.status(502).json({ error: 'Gemini returned invalid JSON', raw: rawText.slice(0, 300) });
+      return res.status(502).json({ error: 'Groq returned invalid JSON', raw: rawText.slice(0, 300) });
     }
 
     // Step 2: Verify each word on verbformen.de/uk-de
