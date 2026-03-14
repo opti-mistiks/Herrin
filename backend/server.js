@@ -922,6 +922,232 @@ app.post('/api/topics/:id/forms', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Auto-generate words for topic ─────────────────────────────────────────
+app.post('/api/generate-words', requireAdmin, async (req, res) => {
+  const { topicNameUk, topicNameDe, category, count, existingWords } = req.body;
+  if (!topicNameUk) return res.status(400).json({ error: 'topicNameUk required' });
+
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY not set' });
+
+  const isVerbs = category === 'verbs';
+  const n = Math.min(Math.max(parseInt(count) || 15, 1), 50);
+  const existingGerman = (existingWords || []).map(w => w.german?.toLowerCase()).filter(Boolean);
+
+  try {
+    // Step 1: Gemini generates words
+    const prompt = isVerbs
+      ? `Ти — експерт з німецької мови. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${n} різних дієслів.
+Вже існують в базі: ${existingGerman.length ? existingGerman.join(', ') : 'немає'} — НЕ повторюй їх.
+Відповідай ТІЛЬКИ валідним JSON масивом без пояснень:
+[{"german":"gehen","ukrainian":"йти"},...]
+Правила: тільки інфінітив, тільки реальні слова, без дублікатів.`
+      : `Ти — експерт з німецької мови. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${n} різних іменників.
+Вже існують в базі: ${existingGerman.length ? existingGerman.join(', ') : 'немає'} — НЕ повторюй їх.
+Відповідай ТІЛЬКИ валідним JSON масивом без пояснень:
+[{"article":"die","german":"Mutter","ukrainian":"мати"},...]
+Правила: правильний артикль (der/die/das), тільки реальні слова, без дублікатів.`;
+
+    const aiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+        }),
+      }
+    );
+    if (!aiRes.ok) return res.status(502).json({ error: 'Gemini error: ' + await aiRes.text() });
+    const aiData = await aiRes.json();
+    const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    let words;
+    try {
+      words = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+      if (!Array.isArray(words)) throw new Error('not array');
+    } catch {
+      return res.status(502).json({ error: 'Gemini returned invalid JSON', raw: rawText.slice(0, 300) });
+    }
+
+    // Step 2: Verify each word on verbformen.de/uk-de
+    const verified = [];
+    for (const w of words) {
+      const searchWord = encodeURIComponent(w.ukrainian || w.german);
+      const url = `https://www.verbformen.de/uk-de/${searchWord}/`;
+      try {
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; educational-app/1.0)', 'Accept-Language': 'de,uk;q=0.9' },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (r.ok) {
+          const html = await r.text();
+          let foundGerman = null;
+          let foundArticle = null;
+
+          const mainMatch = html.match(/<span[^>]*class="[^"]*rCnj[^"]*"[^>]*>([^<]+)<\/span>/i)
+            || html.match(/<h1[^>]*>.*?<b>([^<]+)<\/b>/i)
+            || html.match(/class="rInf"[^>]*>\s*([^<\s]+)/i);
+
+          if (mainMatch) {
+            const raw = mainMatch[1].trim();
+            const artMatch = raw.match(/^(der|die|das)\s+(.+)$/i);
+            if (artMatch) {
+              foundArticle = artMatch[1].toLowerCase();
+              foundGerman = artMatch[2].trim();
+            } else {
+              foundGerman = raw;
+            }
+          }
+
+          verified.push({
+            article: foundArticle || w.article || '',
+            german: foundGerman || w.german,
+            ukrainian: w.ukrainian,
+            source: foundGerman ? 'verbformen' : 'ai',
+          });
+        } else {
+          verified.push({ ...w, source: 'ai' });
+        }
+      } catch {
+        verified.push({ ...w, source: 'ai' });
+      }
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    res.json({ success: true, words: verified });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Parse verbformen.de ────────────────────────────────────────────────────
+app.post('/api/parse-verbformen', requireAdmin, async (req, res) => {
+  const { words, category } = req.body;
+  if (!Array.isArray(words) || !words.length) return res.status(400).json({ error: 'words required' });
+
+  const isVerbs = category === 'verbs';
+  const results = [];
+  const errors = [];
+
+  for (const word of words) {
+    const slug = isVerbs ? word.german : (word.german || word).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\s+/g,'-');
+    const url = isVerbs
+      ? `https://www.verbformen.de/de-uk/konjugation/${encodeURIComponent(word.german)}.htm`
+      : `https://www.verbformen.de/de-uk/deklination/substantive/${encodeURIComponent(word.german)}.htm`;
+
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; educational-app/1.0)',
+          'Accept-Language': 'de,uk;q=0.9',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!r.ok) { errors.push({ word: word.german, error: `HTTP ${r.status}` }); continue; }
+      const html = await r.text();
+
+      if (isVerbs) {
+        // Parse verb conjugation
+        const forms = {};
+        const ukForms = {};
+
+        // Helper: extract form by searching table cells
+        function extractVerb(tense, person, html) {
+          // verbformen.de uses rCnj class spans for conjugation
+          const patterns = {
+            'pras_ich': /Präsens[\s\S]*?ich\s+<[^>]*>([^<]+)<\/[^>]+>/,
+            'pras_du':  /Präsens[\s\S]*?du\s+<[^>]*>([^<]+)<\/[^>]+>/,
+          };
+          return null;
+        }
+
+        // Parse using regex on HTML structure of verbformen.de
+        // Präsens section
+        const prasMatch = html.match(/class="rCnj"[\s\S]*?Präsens([\s\S]*?)(?:Präteritum|Futur)/i);
+        if (prasMatch) {
+          const section = prasMatch[1];
+          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
+          const persons = ['ich','du','er','wir','ihr','sie'];
+          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`pras_${persons[i]}`] = f; });
+        }
+
+        // Präteritum section
+        const pratMatch = html.match(/Präteritum([\s\S]*?)(?:Futur|Konjunktiv)/i);
+        if (pratMatch) {
+          const section = pratMatch[1];
+          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
+          const persons = ['ich','du','er','wir','ihr','sie'];
+          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`prat_${persons[i]}`] = f; });
+        }
+
+        // Futur
+        const futMatch = html.match(/Futur I([\s\S]*?)(?:Futur II|Konjunktiv|$)/i);
+        if (futMatch) {
+          const section = futMatch[1];
+          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
+          const persons = ['ich','du','er','wir','ihr','sie'];
+          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`fut_${persons[i]}`] = f; });
+        }
+
+        // Partizip II
+        const p2Match = html.match(/Partizip II[\s\S]*?<b[^>]*>([^<]+)<\/b>/i);
+        if (p2Match) forms.partizip2 = p2Match[1].trim();
+
+        // hilfsverb
+        forms.hilfsverb = html.includes('ist gegangen') || html.match(/\bsein\b.*?Hilfsverb/i) ? 'sein' : 'haben';
+
+        if (Object.keys(forms).length > 3) {
+          results.push({ german: word.german, forms, ukForms });
+        } else {
+          errors.push({ word: word.german, error: 'Не вдалось розпарсити форми' });
+        }
+      } else {
+        // Parse noun declension
+        const forms = {};
+        const ukForms = {};
+
+        // verbformen.de noun table: Nom/Akk/Dat/Gen × Sg/Pl
+        const cases = ['nom','akk','dat','gen'];
+        const nums  = ['sg','pl'];
+
+        // Extract declension table
+        const tableMatch = html.match(/Deklination[\s\S]*?<table([\s\S]*?)<\/table>/i);
+        if (tableMatch) {
+          const rows = [...tableMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
+          rows.forEach((row, ri) => {
+            if (ri === 0) return; // skip header
+            const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
+              .map(c => c[1].replace(/<[^>]+>/g,'').trim());
+            const caseKey = cases[ri - 1];
+            if (caseKey) {
+              if (cells[1]) forms[`${caseKey}_sg`] = cells[1];
+              if (cells[2]) forms[`${caseKey}_pl`] = cells[2];
+            }
+          });
+        }
+
+        // Ukrainian translations from de-uk page
+        const ukTableMatch = html.match(/uk[\s\S]*?<table([\s\S]*?)<\/table>/i);
+
+        if (Object.keys(forms).length >= 4) {
+          results.push({ german: word.german || word, forms, ukForms });
+        } else {
+          errors.push({ word: word.german || word, error: 'Не вдалось розпарсити відмінки' });
+        }
+      }
+
+      // Rate limiting — wait 500ms between requests
+      await new Promise(r => setTimeout(r, 500));
+    } catch(e) {
+      errors.push({ word: word.german || word, error: e.message });
+    }
+  }
+
+  res.json({ success: true, results, errors, total: words.length, parsed: results.length });
+});
+
 // ── Health check ───────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true }));
 
