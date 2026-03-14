@@ -1255,11 +1255,10 @@ async function runAutoGenerate() {
 
   try {
     const existingWords = editorWords.map(w => ({ german: w.german }));
-    const r = await apiFetch('/api/generate-words', {
+    const data = await apiFetch('/api/generate-words', {
       method: 'POST',
       body: JSON.stringify({ topicNameUk: nameUk, topicNameDe: nameDe, category, count, existingWords }),
     });
-    const data = await r.json();
     if (!data.success) throw new Error(data.error || 'Помилка');
 
     _autogenWords = data.words;
