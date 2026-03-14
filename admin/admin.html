@@ -1,0 +1,2782 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Herrin — Адмін</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #07071a;
+      --surface: #0d0d28;
+      --card:    #12122e;
+      --border:  #1e1e4a;
+      --border2: #2c2c60;
+      --primary: #6366f1;
+      --primary-glow: #6366f133;
+      --gold:    #fbbf24;
+      --green:   #34d399;
+      --red:     #f87171;
+      --cyan:    #22d3ee;
+      --text:    #e8e8f8;
+      --muted:   #8888bb;
+      --font-h:  'Outfit', sans-serif;
+      --font-b:  'Manrope', sans-serif;
+      --r:       10px;
+      --r-lg:    16px;
+    }
+    :root.light {
+      --bg:      #f0f2f9;
+      --surface: #e4e7f2;
+      --card:    #ffffff;
+      --border:  #d0d4e8;
+      --border2: #b8bed8;
+      --primary: #6366f1;
+      --primary-glow: #6366f122;
+      --gold:    #d97706;
+      --green:   #059669;
+      --red:     #dc2626;
+      --cyan:    #0ea5c9;
+      --text:    #1a1a3a;
+      --muted:   #6666aa;
+    }
+    :root.light body::before { display: none; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--font-b); font-size: 15px; min-height: 100vh;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(300px 300px at 80% 10%, #6366f108 0%, transparent 70%),
+                        radial-gradient(400px 400px at 10% 90%, #22d3ee05 0%, transparent 70%);
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+
+    #app { position: relative; z-index: 1; min-height: 100vh; }
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 28px; height: 60px; gap: 16px;
+    }
+    .nav-logo {
+      font-family: var(--font-h); font-size: 1.1rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .nav-badge {
+      font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 4px;
+      background: var(--red-bg, #3d1c1c); color: var(--red); letter-spacing: .06em; text-transform: uppercase;
+    }
+    :root.light .nav-badge { background: #fee2e2; }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(1.4); }
+    }
+    .online-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 4px;
+      background: #0a2e1a; color: #34d399; border: 1px solid #1a5c3a;
+      letter-spacing: .04em;
+    }
+    .online-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #34d399;
+      display: inline-block; animation: pulse-dot 2s infinite;
+    }
+    :root.light .online-badge { background: #dcfce7; color: #16a34a; border-color: #86efac; }
+    :root.light .online-badge-dot { background: #16a34a; }
+    .nav-left { display: flex; align-items: center; gap: 12px; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-top-row { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 16px; }
+    .nav-tab {
+      font-family: var(--font-b); font-size: .85rem; font-weight: 600;
+      padding: 7px 14px; border-radius: var(--r); border: 1px solid transparent;
+      cursor: pointer; transition: all .18s; color: var(--muted); background: transparent;
+    }
+    .nav-tab:hover { color: var(--text); border-color: var(--border2); }
+    .nav-tab.active { color: var(--text); background: var(--card); border-color: var(--border2); }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      font-family: var(--font-b); font-size: .88rem; font-weight: 600;
+      padding: 9px 18px; border-radius: var(--r); border: none;
+      cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 0 16px var(--primary-glow); }
+    .btn-primary:hover:not(:disabled) { background: #7c7ff4; transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+    .btn-danger { background: var(--danger-bg, #3d1c1c); color: var(--red); border: 1px solid var(--danger-border, #5c2828); }
+    .btn-danger:hover:not(:disabled) { background: var(--danger-hover, #5c2828); }
+    :root.light .btn-danger { --danger-bg: #fee2e2; --danger-border: #fca5a5; --danger-hover: #fecaca; }
+    .btn-success { background: #0a3d2a; color: var(--green); border: 1px solid #1a5c3a; }
+    .btn-success:hover:not(:disabled) { background: #1a5c3a; }
+    .btn-sm { padding: 6px 12px; font-size: .8rem; }
+    .btn-lg { padding: 12px 24px; font-size: .95rem; }
+
+    .input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--r); padding: 10px 14px;
+      font-family: var(--font-b); font-size: .9rem; color: var(--text);
+      outline: none; transition: border-color .18s, box-shadow .18s;
+    }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .input::placeholder { color: var(--muted); }
+    label { display: block; font-size: .82rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    .form-group { margin-bottom: 16px; }
+    .form-row { display: grid; grid-template-columns: 20px 80px 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-lg); }
+
+    .auth-center { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .auth-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 40px; width: 100%; max-width: 380px;
+    }
+    .auth-box h1 { font-family: var(--font-h); font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+    .auth-box p { color: var(--muted); font-size: .88rem; margin-bottom: 24px; }
+    .form-error { color: var(--red); font-size: .83rem; margin-top: 10px; min-height: 18px; text-align: center; }
+
+    .page-title { font-family: var(--font-h); font-size: 1.6rem; font-weight: 800; margin-bottom: 4px; }
+    .page-sub   { color: var(--muted); font-size: .9rem; margin-bottom: 28px; }
+    .top-bar    { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+
+    .topic-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .topic-row:last-child { border-bottom: none; }
+    .topic-row:hover { background: var(--surface); }
+    .topic-row.drag-over { background: var(--primary-glow); border-color: var(--primary); }
+    .topic-row.dragging { opacity: .4; }
+    .topic-row-info { flex: 1; min-width: 0; }
+    .topic-row-name { font-weight: 600; font-size: .95rem; }
+    .topic-row-sub  { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+    .topic-row-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .drag-handle {
+      color: var(--muted); cursor: grab; font-size: 1.1rem; flex-shrink: 0;
+      padding: 4px; border-radius: 4px; transition: color .15s; line-height: 1;
+      user-select: none;
+    }
+    .drag-handle:hover { color: var(--text); }
+    .drag-handle:active { cursor: grabbing; }
+    .form-row.drag-over { background: var(--primary-glow); border-radius: var(--r); outline: 1px solid var(--primary); }
+    .form-row.dragging { opacity: .4; }
+
+    .editor-header { margin-bottom: 28px; }
+    .editor-section-title {
+      font-family: var(--font-h); font-size: 1rem; font-weight: 700;
+      margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .words-header {
+      display: grid; grid-template-columns: 20px 80px 1fr 1fr 36px;
+      gap: 8px; padding: 0 0 6px; margin-bottom: 4px;
+    }
+    .words-header span { font-size: .77rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    #words-list { max-height: 420px; overflow-y: auto; padding-right: 4px; }
+
+    .remove-btn {
+      width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--remove-border, #5c2828);
+      background: var(--remove-bg, #3d1c1c); color: var(--red); font-size: 1rem;
+      cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .remove-btn:hover { background: var(--remove-hover, #5c2828); }
+    :root.light .remove-btn { --remove-bg: #fee2e2; --remove-border: #fca5a5; --remove-hover: #fecaca; }
+
+    /* ── Scene-specific ── */
+    .scene-words-header {
+      display: grid; grid-template-columns: 70px 80px 1fr 1fr 36px;
+      gap: 8px; padding: 0 0 6px; margin-bottom: 4px;
+    }
+    .scene-words-header span { font-size: .77rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .scene-form-row { display: grid; grid-template-columns: 70px 80px 1fr 1fr 36px; gap: 8px; align-items: end; margin-bottom: 8px; }
+
+    .img-upload-zone {
+      border: 2px dashed var(--border2); border-radius: var(--r-lg);
+      padding: 24px 16px; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s; position: relative;
+      min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    }
+    .img-upload-zone:hover, .img-upload-zone.drag { border-color: var(--primary); background: var(--primary-glow); }
+    .img-upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .img-upload-zone .zone-icon { font-size: 2rem; }
+    .img-upload-zone .zone-label { font-size: .85rem; color: var(--muted); }
+    .img-upload-zone .zone-label strong { color: var(--text); }
+    .img-preview {
+      width: 100%; max-height: 160px; object-fit: cover;
+      border-radius: var(--r); margin-top: 8px; display: none;
+    }
+    .img-preview.show { display: block; }
+    .img-uploading { color: var(--cyan); font-size: .85rem; display: none; }
+    .img-uploading.show { display: block; }
+    .img-uploaded { color: var(--green); font-size: .82rem; display: none; }
+    .img-uploaded.show { display: block; }
+    .img-clear-btn {
+      font-size: .78rem; color: var(--red); cursor: pointer; margin-top: 4px;
+      background: none; border: none; font-family: var(--font-b); display: none;
+    }
+    .img-clear-btn.show { display: inline-block; }
+
+    #toast {
+      position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: var(--r-lg); padding: 14px 20px;
+      font-size: .9rem; font-weight: 500;
+      box-shadow: 0 8px 32px #0008;
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s; max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error   { border-color: var(--red);   color: var(--red); }
+
+    .loader-wrap { display: flex; align-items: center; justify-content: center; min-height: 60vh; gap: 12px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+    /* ── Grammar dropdown ──────────────────────────────── */
+    .grammar-dropdown-wrap { position: relative; }
+    .grammar-dropdown {
+      position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: var(--r-lg); padding: 6px;
+      box-shadow: 0 8px 32px #0006; z-index: 500;
+      min-width: 160px;
+      display: none;
+    }
+    .grammar-dropdown.open { display: block; }
+    .grammar-dropdown button {
+      display: flex; align-items: center; gap: 8px;
+      width: 100%; padding: 10px 14px; border-radius: 10px;
+      border: none; background: none; cursor: pointer;
+      font-family: var(--font-b); font-size: .9rem; font-weight: 600;
+      color: var(--text); text-align: left;
+      transition: background .15s;
+    }
+    .grammar-dropdown button:hover { background: var(--surface); }
+
+    /* ── Mobile hamburger + drawer ─────────────────────── */
+    .nav-mobile-right { display: none; align-items: center; gap: 8px; }
+    .admin-nav-tabs-mobile { display: none; }
+    .nav-hamburger {
+      display: none; flex-direction: column; justify-content: center; gap: 3px;
+      width: 25px; height: 25px; padding: 4px;
+      background: transparent; border: 1px solid var(--primary);
+      border-radius: var(--r); cursor: pointer; flex-shrink: 0;
+    }
+    .nav-hamburger span {
+      display: block; width: 100%; height: 2px;
+      background: var(--primary); border-radius: 2px;
+      transition: all .25s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+
+    .admin-mobile-menu {
+      display: none; position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      box-shadow: 0 12px 40px #0006; z-index: 200;
+      padding: 8px 0 12px;
+    }
+    .admin-mobile-menu.open { display: block; }
+    .mobile-menu-item {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 12px 20px;
+      background: none; border: none; text-align: left;
+      font-family: var(--font-b); font-size: .95rem; font-weight: 600;
+      color: var(--text); cursor: pointer; transition: background .15s;
+    }
+    .mobile-menu-item:hover { background: var(--surface); }
+    .mobile-menu-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+    /* ── Tablet (max 900px) ─────────────────────────────── */
+    @media (max-width: 900px) {
+      nav { padding: 0 16px; }
+      .container { padding: 24px 16px 60px; }
+      .nav-tabs { gap: 2px; }
+      .nav-tab { padding: 6px 10px; font-size: .8rem; }
+    }
+
+    /* ── Mobile (max 640px) ─────────────────────────────── */
+    @media (max-width: 640px) {
+      nav {
+        padding: 0 20px; height: auto;
+        flex-wrap: wrap;
+        border-bottom: none;
+        align-items: stretch;
+        will-change: transform;
+      }
+
+      /* Row 1: logo + badges + right buttons */
+      .nav-top-row {
+        display: flex; align-items: center;
+        width: 100%; height: 36px; flex-shrink: 0;
+      }
+      .nav-left {
+        flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;
+      }
+      .nav-logo { font-size: .95rem; }
+      .online-badge { font-size: .65rem; padding: 2px 6px; }
+      .nav-badge { font-size: .65rem; padding: 2px 6px; }
+
+      /* Hide desktop tabs and right actions */
+      .nav-tabs { display: none !important; }
+      .nav-desktop-right { display: none !important; }
+
+      /* Show mobile right */
+      .nav-mobile-right {
+        display: flex; align-items: center;
+        height: 100%; gap: 6px; flex-shrink: 0;
+      }
+      .nav-mobile-right #admin-theme-btn {
+        font-size: .7rem !important; padding: 3px 7px !important;
+      }
+      .nav-hamburger { display: flex; }
+
+      /* Row 2: tabs */
+      .admin-nav-tabs-mobile {
+        display: flex; width: calc(100% + 40px);
+        border-top: 1px solid var(--border);
+        margin: 0 -20px; padding: 0; gap: 0;
+        position: relative;
+      }
+      .admin-nav-tabs-mobile::after {
+        content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+        height: 2px; background: var(--border);
+      }
+      .nav-tab-mobile {
+        flex: 1; text-align: center;
+        padding: 8px 2px 7px; font-size: .75rem; font-weight: 600;
+        color: var(--muted); background: none; border: none;
+        cursor: pointer; font-family: var(--font-b);
+        border-bottom: 2px solid transparent;
+        position: relative; z-index: 1;
+        transition: all .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .nav-tab-mobile.active { color: var(--primary); border-bottom-color: var(--primary); }
+      .nav-tab-mobile:hover { color: var(--text); }
+
+      /* Container */
+      .container { padding: 16px 14px 60px; }
+
+      /* Page titles */
+      .page-title { font-size: 1.25rem; }
+      .page-sub { font-size: .82rem; margin-bottom: 18px; }
+      .top-bar { gap: 8px; }
+      .top-bar .btn { font-size: .82rem; padding: 8px 14px; }
+
+      /* Topic list rows */
+      .topic-row { flex-wrap: wrap; padding: 12px 14px; gap: 10px; }
+      .topic-row-actions { width: 100%; justify-content: flex-end; }
+
+      /* Editor */
+      .editor-header { margin-bottom: 18px; }
+      .card[style*="padding:28px"], .card[style*="padding: 28px"] { padding: 18px 14px !important; }
+
+      /* Grid info form (2-column → 1-column) */
+      div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+      /* Word rows */
+      .form-row { grid-template-columns: 16px 62px 1fr 1fr 36px; gap: 6px; }
+      .words-header { grid-template-columns: 16px 62px 1fr 1fr 36px; gap: 6px; }
+      .scene-form-row { grid-template-columns: 40px 1fr 1fr 36px; gap: 6px; }
+      .scene-words-header { grid-template-columns: 40px 1fr 1fr 36px; gap: 6px; }
+      #words-list { max-height: 320px; }
+
+      /* Settings bot level blocks */
+      div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+
+      /* Auth box */
+      .auth-box { padding: 28px 20px; }
+
+      /* Toast */
+      #toast { right: 10px; bottom: 10px; left: 10px; max-width: none; }
+
+      /* Buttons */
+      .btn-lg { padding: 10px 18px; font-size: .88rem; }
+    }
+
+    /* ── Very small phones (max 380px) ─────────────────── */
+    @media (max-width: 380px) {
+      .nav-tab-mobile { font-size: .68rem; }
+      .form-row { grid-template-columns: 16px 52px 1fr 1fr 36px; }
+      .words-header { grid-template-columns: 16px 52px 1fr 1fr 36px; }
+    }
+
+    /* ── Custom Confirm Dialog ─────────────────────────────── */
+    #custom-confirm-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: #000000bb;
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    #custom-confirm-overlay.open {
+      opacity: 1; pointer-events: all;
+    }
+    #custom-confirm-box {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: var(--r-lg);
+      padding: 28px 28px 22px;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 24px 64px #00000088;
+      transform: scale(.94) translateY(8px);
+      transition: transform .2s;
+    }
+    #custom-confirm-overlay.open #custom-confirm-box {
+      transform: scale(1) translateY(0);
+    }
+    #custom-confirm-icon {
+      font-size: 2rem; margin-bottom: 12px; line-height: 1;
+    }
+    #custom-confirm-title {
+      font-family: var(--font-h); font-size: 1.1rem; font-weight: 700;
+      margin-bottom: 8px; color: var(--text);
+    }
+    #custom-confirm-msg {
+      font-size: .9rem; color: var(--muted); margin-bottom: 24px; line-height: 1.5;
+    }
+    .custom-confirm-btns {
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <!-- Custom Confirm Dialog -->
+  <div id="custom-confirm-overlay">
+    <div id="custom-confirm-box">
+      <div id="custom-confirm-icon">🗑️</div>
+      <div id="custom-confirm-title"></div>
+      <div id="custom-confirm-msg"></div>
+      <div class="custom-confirm-btns">
+        <button class="btn btn-ghost" id="custom-confirm-cancel">Скасувати</button>
+        <button class="btn btn-danger" id="custom-confirm-ok">Видалити</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app"></div>
+  <div id="toast"></div>
+
+<script>
+const BACKEND_URL = `${window.location.protocol}//${window.location.hostname}:3001`;
+
+/* ════ Custom Confirm Dialog ════════════════════════════════ */
+let _confirmResolve = null;
+
+function showAdminConfirm({ icon = '🗑️', title, message, confirmText = 'Видалити', confirmClass = 'btn-danger' } = {}) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('custom-confirm-icon').textContent = icon;
+    document.getElementById('custom-confirm-title').textContent = title;
+    document.getElementById('custom-confirm-msg').textContent = message;
+    const okBtn = document.getElementById('custom-confirm-ok');
+    okBtn.textContent = confirmText;
+    okBtn.className = `btn ${confirmClass}`;
+    document.getElementById('custom-confirm-overlay').classList.add('open');
+    okBtn.focus();
+  });
+}
+
+function _closeAdminConfirm(result) {
+  document.getElementById('custom-confirm-overlay').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('custom-confirm-ok').addEventListener('click', () => _closeAdminConfirm(true));
+  document.getElementById('custom-confirm-cancel').addEventListener('click', () => _closeAdminConfirm(false));
+  document.getElementById('custom-confirm-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('custom-confirm-overlay')) _closeAdminConfirm(false);
+  });
+});
+
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('custom-confirm-overlay');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  if (e.key === 'Enter') { e.preventDefault(); _closeAdminConfirm(true); }
+  if (e.key === 'Escape') { e.preventDefault(); _closeAdminConfirm(false); }
+}, true); // capture=true — спрацьовує до інших Escape handlers
+
+let adminToken = sessionStorage.getItem('adminToken') || null;
+let currentSection = 'nouns'; // 'nouns' | 'verbs' | 'scenes' | 'settings' | 'prompts'
+
+/* ════ Router ═══════════════════════════════════════════════ */
+function route() {
+  if (!adminToken) { renderLogin(); return; }
+  const hash = window.location.hash.replace('#', '') || '/';
+  const [, page, id] = hash.match(/^\/([\w-]*)(?:\/(.+))?$/) || ['', '', ''];
+
+  if (page === 'new')                   renderEditor(null, currentSection === 'verbs' ? 'verbs' : 'nouns');
+  else if (page === 'edit' && id)       renderEditor(id);
+  else if (page === 'scenes')           renderScenesList();
+  else if (page === 'scene-new')        renderSceneEditor(null);
+  else if (page === 'scene-edit' && id) renderSceneEditor(id);
+  else if (page === 'settings')         renderSettings();
+  else if (page === 'prompts')          renderPrompts();
+  else if (page === 'verbs')            renderVerbsList();
+  else                                  renderNounsList();
+}
+
+function nav(p) { window.location.hash = p; }
+window.addEventListener('hashchange', () => { if (adminToken) route(); });
+
+function adminToggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  adminUpdateThemeBtn();
+}
+
+function adminUpdateThemeBtn() {
+  const isLight = document.documentElement.classList.contains('light');
+  document.querySelectorAll('#admin-theme-btn').forEach(btn => {
+    btn.textContent = isLight ? '☀️ Світла' : '🌙 Темна';
+  });
+}
+
+function applyTheme() {
+  const saved = localStorage.getItem('theme');
+  // default — light; dark only if explicitly saved
+  if (saved === 'dark') document.documentElement.classList.remove('light');
+  else document.documentElement.classList.add('light');
+}
+applyTheme();
+
+/* ════ Shell with nav tabs ══════════════════════════════════ */
+function shell(content, section) {
+  currentSection = section || currentSection;
+  document.getElementById('app').innerHTML = `
+    <nav>
+      <!-- Row 1: logo + badges | right buttons -->
+      <div class="nav-top-row">
+        <div class="nav-left">
+          <span class="nav-logo">Herrin</span>
+          <span class="nav-badge">ADMIN</span>
+          <span id="online-badge" class="online-badge">
+            <span class="online-badge-dot"></span>
+            <span id="online-count">…</span> онлайн
+          </span>
+        </div>
+        <!-- Desktop: tabs in centre, right actions -->
+        <div class="nav-tabs">
+          <button class="nav-tab ${currentSection === 'nouns' ? 'active' : ''}" onclick="nav('/')">📝 Іменники</button>
+          <button class="nav-tab ${currentSection === 'verbs' ? 'active' : ''}" onclick="nav('/verbs')">🔤 Дієслова</button>
+          <button class="nav-tab ${currentSection === 'scenes' ? 'active' : ''}" onclick="nav('/scenes')">🖼️ Сцени</button>
+          <div class="grammar-dropdown-wrap" id="grammar-dd-wrap">
+            <button class="nav-tab ${currentSection === 'prompts' ? 'active' : ''}" onclick="toggleGrammarDropdown(event)" id="grammar-dd-btn">📖 Граматика ▾</button>
+            <div class="grammar-dropdown" id="grammar-dropdown">
+              <button onclick="nav('/prompts');showPromptFor('nouns');closeGrammarDropdown()">📝 Іменники</button>
+              <button onclick="nav('/prompts');showPromptFor('verbs');closeGrammarDropdown()">🔤 Дієслова</button>
+            </div>
+          </div>
+          <button class="nav-tab ${currentSection === 'settings' ? 'active' : ''}" onclick="nav('/settings')">⚙️ Налаштування</button>
+        </div>
+        <div class="nav-desktop-right" style="display:flex;align-items:center;gap:8px">
+          <button id="admin-theme-btn" onclick="adminToggleTheme()" style="
+            background:var(--surface);border:1px solid var(--border2);
+            border-radius:99px;padding:5px 12px;cursor:pointer;
+            font-size:.8rem;font-weight:600;color:var(--text);
+            font-family:var(--font-b);transition:all .2s;">
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Вийти</button>
+        </div>
+        <!-- Mobile: theme + hamburger -->
+        <div class="nav-mobile-right">
+          <button id="admin-theme-btn" onclick="adminToggleTheme()" style="
+            background:var(--surface);border:1px solid var(--border2);
+            border-radius:99px;padding:5px 12px;cursor:pointer;
+            font-size:.8rem;font-weight:600;color:var(--text);
+            font-family:var(--font-b);transition:all .2s;">
+          </button>
+          <button class="nav-hamburger" onclick="toggleAdminMobileMenu(event)" aria-label="Меню">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+      <!-- Row 2: mobile tabs -->
+      <div class="admin-nav-tabs-mobile">
+        <button class="nav-tab-mobile ${currentSection === 'nouns' ? 'active' : ''}" onclick="nav('/')">📝 Іменники</button>
+        <button class="nav-tab-mobile ${currentSection === 'verbs' ? 'active' : ''}" onclick="nav('/verbs')">🔤 Дієслова</button>
+        <button class="nav-tab-mobile ${currentSection === 'scenes' ? 'active' : ''}" onclick="nav('/scenes')">🖼️ Сцени</button>
+        <div class="grammar-dropdown-wrap" style="flex:1;display:flex;justify-content:center;position:relative">
+          <button class="nav-tab-mobile ${currentSection === 'prompts' ? 'active' : ''}" onclick="toggleGrammarDropdown(event)" style="width:100%">Граматика ▾</button>
+          <div class="grammar-dropdown" id="grammar-dropdown-mobile">
+            <button onclick="nav('/prompts');showPromptFor('nouns');closeGrammarDropdown()">📝 Іменники</button>
+            <button onclick="nav('/prompts');showPromptFor('verbs');closeGrammarDropdown()">🔤 Дієслова</button>
+          </div>
+        </div>
+        <button class="nav-tab-mobile ${currentSection === 'settings' ? 'active' : ''}" onclick="nav('/settings')">⚙️ Налаштув.</button>
+      </div>
+      <!-- Mobile drawer -->
+      <div class="admin-mobile-menu" id="admin-mobile-menu">
+        <div class="mobile-menu-divider"></div>
+        <button class="mobile-menu-item" style="color:var(--red)" onclick="adminLogout();closeAdminMobileMenu()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Вийти
+        </button>
+      </div>
+    </nav>
+    <div class="container">${content}</div>`;
+  adminUpdateThemeBtn();
+  // Restore online count after DOM re-render
+  const countEl = document.getElementById('online-count');
+  if (countEl && _lastOnlineCount !== null) countEl.textContent = _lastOnlineCount;
+}
+
+/* ════ Auth ═════════════════════════════════════════════════ */
+function renderLogin() {
+  document.getElementById('app').innerHTML = `
+    <div class="auth-center">
+      <div class="auth-box">
+        <h1>🔐 Адмін-панель</h1>
+        <p>Herrin — керування контентом</p>
+        <div class="form-group">
+          <label>Пароль</label>
+          <input class="input" id="admin-pass" type="password" placeholder="Введіть пароль…"
+            onkeydown="if(event.key==='Enter')adminLogin()" autofocus />
+        </div>
+        <div id="login-error" class="form-error"></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="adminLogin()">
+          Увійти →
+        </button>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('admin-pass')?.focus(), 50);
+}
+
+async function adminLogin() {
+  const pass = document.getElementById('admin-pass')?.value;
+  const errEl = document.getElementById('login-error');
+  if (!pass) return;
+  const btn = document.querySelector('.auth-box .btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch(`${BACKEND_URL}/api/admin/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass }),
+    });
+    const data = await r.json();
+    if (data.success) {
+      adminToken = data.token;
+      sessionStorage.setItem('adminToken', adminToken);
+      startOnlinePolling();
+      route();
+    } else {
+      if (errEl) errEl.textContent = 'Невірний пароль';
+      if (btn) { btn.disabled = false; btn.textContent = 'Увійти →'; }
+    }
+  } catch {
+    if (errEl) errEl.textContent = 'Помилка з\'єднання';
+    if (btn) { btn.disabled = false; btn.textContent = 'Увійти →'; }
+  }
+}
+
+async function adminLogout() {
+  await apiFetch('/api/admin/logout', { method: 'POST', body: JSON.stringify({ token: adminToken }) });
+  stopOnlinePolling();
+  adminToken = null;
+  sessionStorage.removeItem('adminToken');
+  renderLogin();
+}
+
+/* ════ TOPICS LIST ══════════════════════════════════════════ */
+function filterTopicList(inputId, listId) {
+  const q = document.getElementById(inputId)?.value.toLowerCase().trim() || '';
+  const topics = window._adminTopicsData || [];
+  const list = document.getElementById(listId);
+  if (!list) return;
+  if (!q) { list.innerHTML = topics.map((t,i)=>topicRow(t,i)).join('') || '<div class="empty-state">Немає тем.</div>'; return; }
+  const matched = topics.filter(t => {
+    const inName = (t.name||'').toLowerCase().includes(q) || (t.nameUk||'').toLowerCase().includes(q);
+    const inWords = (t.words||[]).some(w => (w.german||'').toLowerCase().includes(q) || (w.ukrainian||'').toLowerCase().includes(q));
+    return inName || inWords;
+  });
+  list.innerHTML = matched.length ? matched.map((t,i)=>topicRow(t,i)).join('') : `<div class="empty-state">Нічого не знайдено</div>`;
+}
+
+function filterSceneList(inputId, listId) {
+  const q = document.getElementById(inputId)?.value.toLowerCase().trim() || '';
+  const scenes = window._adminScenesData || [];
+  const list = document.getElementById(listId);
+  if (!list) return;
+  if (!q) { list.innerHTML = scenes.map((s,i)=>sceneRow(s,i)).join('') || '<div class="empty-state">Немає сцен.</div>'; return; }
+  const matched = scenes.filter(s => {
+    const inName = (s.name||'').toLowerCase().includes(q) || (s.nameUk||'').toLowerCase().includes(q);
+    const inWords = (s.words||[]).some(w => (w.german||'').toLowerCase().includes(q) || (w.ukrainian||'').toLowerCase().includes(q));
+    return inName || inWords;
+  });
+  list.innerHTML = matched.length ? matched.map((s,i)=>sceneRow(s,i)).join('') : `<div class="empty-state">Нічого не знайдено</div>`;
+}
+
+async function renderNounsList() {
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'nouns');
+  let topics = [];
+  try {
+    topics = await apiGet('/api/topics');
+  } catch {
+    shell(`<div class="empty-state"><div style="font-size:2rem">⚠️</div><p>Не вдалося завантажити теми. Перевірте з'єднання.</p></div>`, 'nouns');
+    return;
+  }
+  const filtered = topics.filter(t => !t.category || t.category === 'nouns');
+  _listUsedEmojis = new Set();
+  window._adminTopicsData = filtered;
+  shell(`
+    <div class="top-bar">
+      <div>
+        <div class="page-title">📝 Іменники</div>
+        <div class="page-sub">${filtered.length || 0} тем у базі</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="openImportModal('nouns')">📥 Імпорт з файлу</button>
+        <button class="btn btn-primary" onclick="nav('/new')">+ Нова тема</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <input class="input" id="search-nouns" placeholder="🔍 Пошук по назві або слову…" oninput="filterTopicList('search-nouns','topics-list-nouns')" onkeydown="if(event.key==='Escape'){this.value='';filterTopicList('search-nouns','topics-list-nouns')}" autocomplete="off" style="max-width:400px" />
+    </div>
+    <div class="card" id="topics-list-nouns">
+      ${!filtered.length ? `<div class="empty-state">Немає тем. Створіть першу!</div>` : filtered.map((t,i)=>topicRow(t,i)).join('')}
+    </div>`, 'nouns');
+}
+
+async function renderVerbsList() {
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'verbs');
+  let topics = [];
+  try {
+    topics = await apiGet('/api/topics');
+  } catch {
+    shell(`<div class="empty-state"><div style="font-size:2rem">⚠️</div><p>Не вдалося завантажити теми. Перевірте з'єднання.</p></div>`, 'verbs');
+    return;
+  }
+  const filtered = topics.filter(t => t.category === 'verbs');
+  _listUsedEmojis = new Set();
+  window._adminTopicsData = filtered;
+  shell(`
+    <div class="top-bar">
+      <div>
+        <div class="page-title">🔤 Дієслова</div>
+        <div class="page-sub">${filtered.length || 0} тем у базі</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="openImportModal('verbs')">📥 Імпорт з файлу</button>
+        <button class="btn btn-primary" onclick="nav('/new')">+ Нова тема</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <input class="input" id="search-verbs" placeholder="🔍 Пошук по назві або слову…" oninput="filterTopicList('search-verbs','topics-list-verbs')" onkeydown="if(event.key==='Escape'){this.value='';filterTopicList('search-verbs','topics-list-verbs')}" autocomplete="off" style="max-width:400px" />
+    </div>
+    <div class="card" id="topics-list-verbs">
+      ${!filtered.length ? `<div class="empty-state">Немає тем. Створіть першу!</div>` : filtered.map((t,i)=>topicRow(t,i)).join('')}
+    </div>`, 'verbs');
+}
+
+// ── Smart topic emoji (same rules as index.html) ──────────────
+const TOPIC_EMOJI_RULES = [
+  { keys: ['grüß','gruss','hallo','mensch','leute','begrüß','привіт','люди','людина'],  emoji: '👋' },
+  { keys: ['familie','eltern','mutter','vater','kind','baby','сімя','батьки'],          emoji: '👨‍👩‍👧' },
+  { keys: ['freund','freundin','liebe','bezieh','друг','подруга','любов'],              emoji: '❤️' },
+  { keys: ['essen','lebensmittel','speise','nahrung','їжа','продукти','харчування'],    emoji: '🍽️' },
+  { keys: ['getränk','trinken','напої'],                                                emoji: '🥤' },
+  { keys: ['kochen','zubereitung','backen','готування','приготування'],                 emoji: '👨‍🍳' },
+  { keys: ['restaurant','café','gastro','ресторан','кафе','заклад'],                    emoji: '🍴' },
+  { keys: ['obst','früchte','gemüse','овочі','фрукти'],                                emoji: '🥗' },
+  { keys: ['süß','kuchen','torte','dessert','schokolad','десерт','торт','солодощ'],     emoji: '🍰' },
+  { keys: ['supermarkt','einkauf','магазин','супермаркет'],                             emoji: '🛒' },
+  { keys: ['kleidung','kleid','outfit','mode','одяг','сукня','штани'],                  emoji: '👕' },
+  { keys: ['schuh','stiefel','взуття','черевики','кросівки'],                           emoji: '👟' },
+  { keys: ['wohnung','haus','zimmer','zuhause','квартира','будинок','кімната'],         emoji: '🏠' },
+  { keys: ['wohnzimmer','sofa','вітальня','диван'],                                     emoji: '🛋️' },
+  { keys: ['schlafzimmer','bett','спальня','ліжко'],                                    emoji: '🛏️' },
+  { keys: ['badezimmer','dusch','ванна','душ','туалет'],                                emoji: '🚿' },
+  { keys: ['haushalt','putzen','aufräum','bügel','побут','прибирання'],                 emoji: '🧹' },
+  { keys: ['hof','garten','rasen','blume','сад','квітка','газон'],                      emoji: '🌿' },
+  { keys: ['werkzeug','hammer','schrauben','інструмент','молоток'],                     emoji: '🔧' },
+  { keys: ['körper','körperteil','kopf','тіло','голова'],                               emoji: '🫀' },
+  { keys: ['gesundheit','arzt','krankenhaus','medizin','здоров','лікар'],               emoji: '🏥' },
+  { keys: ['körperpflege','hygiene','zähne','гігієна','зуби'],                          emoji: '🪥' },
+  { keys: ['verkehr','auto','bus','zug','bahn','fahrrad','транспорт','автобус'],        emoji: '🚗' },
+  { keys: ['flug','flugzeug','flughafen','літак','аеропорт'],                           emoji: '✈️' },
+  { keys: ['stadt','straße','місто','вулиця','площа'],                                  emoji: '🏙️' },
+  { keys: ['reisen','urlaub','hotel','tourist','подорож','відпустка','готель'],         emoji: '🧳' },
+  { keys: ['natur','wald','berg','fluss','meer','strand','природа','ліс','гора'],       emoji: '🌲' },
+  { keys: ['wetter','regen','sonne','schnee','погода','дощ','сонце','сніг'],            emoji: '🌤️' },
+  { keys: ['tier','hund','katze','vogel','тварини','собака','кіт','птах'],              emoji: '🐾' },
+  { keys: ['insekt','biene','schmetterling','комахи','бджола','метелик'],               emoji: '🦋' },
+  { keys: ['ozean','hai','delfin','океан','акула','дельфін'],                           emoji: '🐚' },
+  { keys: ['jahreszeit','frühling','sommer','herbst','winter','весна','літо','осінь'],  emoji: '🍂' },
+  { keys: ['zeit','stunde','uhrzeit','час','година','хвилина'],                         emoji: '⏰' },
+  { keys: ['datum','kalender','wochentag','дата','календар','тиждень'],                 emoji: '📅' },
+  { keys: ['zahl','nummer','число','цифр'],                                             emoji: '🔢' },
+  { keys: ['schule','klasse','lehrer','школа','клас','вчитель'],                        emoji: '🏫' },
+  { keys: ['lernen','studium','lesen','schreiben','навчання','читання','письмо'],       emoji: '📚' },
+  { keys: ['fach','mathematik','physik','chemie','предмет','математика'],               emoji: '🔬' },
+  { keys: ['arbeit','beruf','büro','робота','професія','офіс'],                         emoji: '💼' },
+  { keys: ['sprache','kommunikation','sprechen','мова','комунікація','розмова'],        emoji: '💬' },
+  { keys: ['technologie','computer','handy','internet','технологія'],                   emoji: '💻' },
+  { keys: ['post','brief','paket','пошта','лист','посилка'],                            emoji: '📬' },
+  { keys: ['digital','website','app','цифровий','сайт','додаток'],                      emoji: '🌐' },
+  { keys: ['musik','lied','konzert','музика','пісня','концерт'],                        emoji: '🎵' },
+  { keys: ['sport','ball','fußball','спорт','футбол','тренування'],                     emoji: '⚽' },
+  { keys: ['kunst','malerei','theater','kino','мистецтво','театр','кіно'],              emoji: '🎨' },
+  { keys: ['fest','feier','geburtstag','weihnacht','свята','день народження'],          emoji: '🎉' },
+  { keys: ['finanzen','geld','budget','konto','фінанси','гроші','бюджет','банк'],       emoji: '💰' },
+  { keys: ['einkaufen','preis','kasse','rabatt','ціна','каса'],                         emoji: '🛍️' },
+  { keys: ['richtung','norden','süden','osten','westen','напрямок','північ'],           emoji: '🧭' },
+  { keys: ['gefühl','emotion','freude','angst','trauer','почуття','радість','страх'],   emoji: '😊' },
+  { keys: ['bewegung','fortbewegung','gehen','fahren','laufen','рух','переміщення'],    emoji: '🚶' },
+  { keys: ['alltag','alltagshandlung','повсякденн','щоденн'],                           emoji: '📋' },
+  { keys: ['denken','entscheiden','erinnern','мислення','думати','вирішувати'],         emoji: '🧠' },
+  { keys: ['veränderung','prozess','beginnen','beenden','зміни','процес'],              emoji: '🔄' },
+  { keys: ['gegenstand','nehmen','legen','stellen','предмет','брати','класти'],         emoji: '📦' },
+  { keys: ['grundverb','sein','haben','werden','основн','базов'],                       emoji: '⚡' },
+];
+const ADMIN_FALLBACK_EMOJIS = ['📌','🔵','🟣','🟠','🟡','🟢','🔶','🔷','📎','🗂️','📁','🗃️','🔖','📍','🏷️'];
+
+const _topicEmojiCache = new Map();
+function getTopicEmoji(topic, usedEmojis) {
+  if (topic.emoji) return topic.emoji;
+  if (_topicEmojiCache.has(topic.id)) return _topicEmojiCache.get(topic.id);
+  const hay = ((topic.name||'') + ' ' + (topic.nameUk||'')).toLowerCase();
+  for (const r of TOPIC_EMOJI_RULES) {
+    if (r.keys.some(k => hay.includes(k))) {
+      if (!usedEmojis || !usedEmojis.has(r.emoji)) {
+        usedEmojis?.add(r.emoji);
+        _topicEmojiCache.set(topic.id, r.emoji);
+        return r.emoji;
+      }
+    }
+  }
+  for (const e of ADMIN_FALLBACK_EMOJIS) {
+    if (!usedEmojis || !usedEmojis.has(e)) {
+      usedEmojis?.add(e);
+      _topicEmojiCache.set(topic.id, e);
+      return e;
+    }
+  }
+  _topicEmojiCache.set(topic.id, '📌');
+  return '📌';
+}
+
+// Track used emojis per rendered list
+let _listUsedEmojis = new Set();
+
+function topicRow(t, i) {
+  const catBadge = t.category === 'verbs'
+    ? `<span style="font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--surface);color:var(--cyan);border:1px solid var(--border2);letter-spacing:.04em">🔤 Дієслово</span>`
+    : `<span style="font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:var(--surface);color:var(--primary);border:1px solid var(--border2);letter-spacing:.04em">📝 Іменник</span>`;
+  const numBadge = i !== undefined ? `<span style="font-size:.68rem;font-weight:800;color:var(--muted);min-width:22px;text-align:right">#${i+1}</span>` : '';
+  return `
+    <div class="topic-row" draggable="true" data-id="${t.id}"
+      ondragstart="topicDragStart(event)"
+      ondragover="topicDragOver(event)"
+      ondragleave="topicDragLeave(event)"
+      ondrop="topicDrop(event)"
+      ondragend="topicDragEnd(event)">
+      <span class="drag-handle" title="Перетягнути">⠿</span>
+      <div class="topic-row-info">
+        <div class="topic-row-name" style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem;line-height:1">${getTopicEmoji(t, _listUsedEmojis)}</span>${escHtml(t.name)} ${catBadge}</div>
+        <div class="topic-row-sub">${escHtml(t.nameUk)} · ${t.words?.length || 0} слів${t.description ? ' · ' + escHtml(t.description) : ''}</div>
+      </div>
+      <div class="topic-row-actions">
+        ${numBadge}
+        <button class="btn btn-ghost btn-sm" onclick="nav('/edit/${t.id}')">✏️ Редагувати</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTopic('${t.id}','${escHtml(t.name)}')">🗑</button>
+      </div>
+    </div>`;
+}
+
+async function deleteTopic(id, name) {
+  const ok = await showAdminConfirm({
+    icon: '🗑️',
+    title: `Видалити тему?`,
+    message: `«${name}» буде видалено назавжди. Це незворотньо.`,
+    confirmText: 'Видалити',
+    confirmClass: 'btn-danger',
+  });
+  if (!ok) return;
+  const r = await apiFetch(`/api/topics/${id}`, { method: 'DELETE' });
+  if (r.success) { toast('✅ Тему видалено', 'success'); currentSection === 'verbs' ? renderVerbsList() : renderNounsList(); }
+  else toast('❌ Помилка видалення', 'error');
+}
+
+/* ════ TOPIC EDITOR ══════════════════════════════════════════ */
+let editorWords = [];
+let editingId = null;
+
+async function renderEditor(id, defaultCategory = 'nouns') {
+  editingId = id;
+  let topic = { name: '', nameUk: '', description: '', category: defaultCategory, words: [] };
+  if (id) {
+    shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, currentSection);
+    try {
+      const data = await apiGet(`/api/topics/${id}`);
+      topic = data;
+    } catch {
+      toast('❌ Тему не знайдено', 'error'); currentSection === 'verbs' ? renderVerbsList() : renderNounsList(); return;
+    }
+  }
+  const cat = topic.category || 'nouns';
+  editorWords = (topic.words || []).map((w, i) => ({ ...w, _id: i }));
+  const backRoute = cat === 'verbs' ? '/verbs' : '/';
+  const currentEmoji = topic.emoji || getTopicEmoji(topic, null);
+  shell(`
+    <div class="editor-header">
+      <button class="btn btn-ghost btn-sm" onclick="nav('${backRoute}')">← Назад</button>
+      <div class="page-title" style="margin-top:16px">${id ? '✏️ Редагувати тему' : '➕ Нова тема'}</div>
+    </div>
+    <div class="card" style="padding:28px;margin-bottom:24px">
+      <div class="editor-section-title">📝 Основна інформація</div>
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:16px;align-items:end">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Емодзі</label>
+          <button id="emoji-btn" onclick="toggleEmojiPicker()" style="
+            width:56px;height:44px;font-size:1.6rem;line-height:1;
+            background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);
+            cursor:pointer;transition:border-color .2s;display:flex;align-items:center;justify-content:center"
+            title="Вибрати емодзі" data-emoji="${topic.emoji || ''}">${currentEmoji}</button>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Назва (нім.)</label>
+          <input class="input" id="topic-name" value="${escHtml(topic.name)}" placeholder="z.B. Familie" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Назва (укр.)</label>
+          <input class="input" id="topic-name-uk" value="${escHtml(topic.nameUk)}" placeholder="Сім'я" />
+        </div>
+      </div>
+      <div id="emoji-picker" style="display:none;margin-top:12px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px">
+        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Оберіть емодзі</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${[
+            '👋','👨‍👩‍👧','❤️','🍽️','🥤','👨‍🍳','🍴','🥗','🍰','🛒',
+            '👕','👟','🏠','🛋️','🛏️','🍳','🚿','🧹','🌿','🔧',
+            '🫀','🏥','🪥','🚗','✈️','🏙️','🧳','🌲','🌤️','🐾',
+            '🦋','🐚','🍂','⏰','📅','🔢','🏫','📚','🔬','💼',
+            '💬','💻','📬','🌐','🎵','⚽','🎨','🎉','💰','🛍️',
+            '🧭','😊','🚶','📋','🧠','🔄','📦','⚡','🎓','🌍',
+            '🏋️','🎭','🎸','🍕','🍺','🧩','🎯','📷','🔑','🌸'
+          ].map(e => `<button onclick="selectEmoji('${e}')" style="
+            font-size:1.4rem;width:40px;height:40px;background:transparent;border:1px solid transparent;
+            border-radius:8px;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center"
+            onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='transparent'"
+          >${e}</button>`).join('')}
+        </div>
+        <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+          <input id="emoji-custom" class="input" style="width:100px" maxlength="4" placeholder="або введи" oninput="selectEmoji(this.value)" />
+          <button onclick="selectEmoji('');document.getElementById('emoji-custom').value=''" class="btn btn-ghost btn-sm">Авто</button>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <label>Опис (необов'язково)</label>
+        <input class="input" id="topic-desc" value="${escHtml(topic.description || '')}" placeholder="Короткий опис теми…" />
+      </div>
+      <div class="form-group">
+        <label>Категорія</label>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;font-weight:500;color:var(--text);
+            background:var(--surface);border:2px solid ${cat === 'nouns' ? 'var(--primary)' : 'var(--border2)'};
+            border-radius:var(--r);padding:10px 16px;flex:1;transition:border-color .2s" id="cat-nouns-label">
+            <input type="radio" name="topic-category" value="nouns" ${cat === 'nouns' ? 'checked' : ''}
+              onchange="updateCatLabel()" style="accent-color:var(--primary);width:15px;height:15px" />
+            📝 Іменники
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;font-weight:500;color:var(--text);
+            background:var(--surface);border:2px solid ${cat === 'verbs' ? 'var(--cyan)' : 'var(--border2)'};
+            border-radius:var(--r);padding:10px 16px;flex:1;transition:border-color .2s" id="cat-verbs-label">
+            <input type="radio" name="topic-category" value="verbs" ${cat === 'verbs' ? 'checked' : ''}
+              onchange="updateCatLabel()" style="accent-color:var(--cyan);width:15px;height:15px" />
+            🔤 Дієслова
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding:28px;margin-bottom:24px">
+      <div class="editor-section-title">
+        📖 Слова
+        <span style="font-size:.8rem;color:var(--muted);font-weight:400" id="words-count-label"></span>
+      </div>
+      <div class="words-header">
+        <span></span><span>Артикль</span><span>Слово (нім.)</span><span>Переклад (укр.)</span><span></span>
+      </div>
+      <div id="words-list"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost" onclick="addWord()">+ Додати слово</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="addMultiple()">📋 Вставити список</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-lg" onclick="nav('/')">Скасувати</button>
+      <button class="btn btn-primary btn-lg" id="save-btn" onclick="saveTopic()">
+        ${id ? '💾 Зберегти зміни' : '🚀 Створити тему'}
+      </button>
+    </div>
+    <div id="bulk-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:200;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r-lg);padding:28px;width:100%;max-width:560px">
+        <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:700;margin-bottom:8px">📋 Вставити список слів</div>
+        <div style="color:var(--muted);font-size:.85rem;margin-bottom:14px">
+          Формат: <code style="color:var(--cyan)">артикль слово — переклад</code><br>
+          Приклад: <code style="color:var(--gold)">der Vater — батько</code>
+        </div>
+        <textarea class="input" id="bulk-input" style="height:200px;resize:vertical;font-family:monospace;font-size:.85rem"
+          placeholder="der Vater — батько&#10;die Mutter — мати&#10;das Kind — дитина"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost" onclick="closeBulk()">Скасувати</button>
+          <button class="btn btn-primary" onclick="parseBulk()">Додати слова</button>
+        </div>
+      </div>
+    </div>`, currentSection);
+  setTimeout(renderWordsList, 0);
+}
+
+// ── Emoji picker ──────────────────────────────────────────────
+function toggleEmojiPicker() {
+  const p = document.getElementById('emoji-picker');
+  if (p) p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function selectEmoji(e) {
+  const btn = document.getElementById('emoji-btn');
+  if (btn) btn.textContent = e || '🏷️';
+  btn.dataset.emoji = e;
+  const p = document.getElementById('emoji-picker');
+  if (p && e) p.style.display = 'none';
+}
+
+function updateCatLabel() {
+  const val = document.querySelector('[name="topic-category"]:checked')?.value;
+  const nl = document.getElementById('cat-nouns-label');
+  const vl = document.getElementById('cat-verbs-label');
+  if (nl) nl.style.borderColor = val === 'nouns' ? 'var(--primary)' : 'var(--border2)';
+  if (vl) vl.style.borderColor = val === 'verbs' ? 'var(--cyan)' : 'var(--border2)';
+}
+
+function renderWordsList() {
+  const list = document.getElementById('words-list');
+  const label = document.getElementById('words-count-label');
+  if (!list) return;
+  if (editorWords.length === 0) {
+    list.innerHTML = `<div style="color:var(--muted);text-align:center;padding:24px;font-size:.9rem">Ще немає слів.</div>`;
+  } else {
+    list.innerHTML = editorWords.map((w, i) => `
+      <div class="form-row" data-idx="${i}" draggable="true"
+        ondragstart="wordDragStart(event,${i})"
+        ondragover="wordDragOver(event,${i})"
+        ondragleave="wordDragLeave(event)"
+        ondrop="wordDrop(event,${i})"
+        ondragend="wordDragEnd(event)">
+        <span class="drag-handle" style="align-self:center;padding-bottom:8px" title="Перетягнути">⠿</span>
+        <input class="input" value="${escHtml(w.article||'')}" placeholder="der/die/das" onchange="updateWord(${i},'article',this.value)" />
+        <input class="input" value="${escHtml(w.german||'')}" placeholder="deutsches Wort" onchange="updateWord(${i},'german',this.value)" onkeydown="if(event.key==='Enter')focusNext(${i},'uk')" />
+        <input class="input" value="${escHtml(w.ukrainian||'')}" placeholder="переклад" onchange="updateWord(${i},'ukrainian',this.value)" id="uk-${i}" onkeydown="if(event.key==='Enter'){if(${i}===editorWords.length-1)addWord();else focusNext(${i+1},'de');}" />
+        <button class="remove-btn" onclick="removeWord(${i})">×</button>
+      </div>`).join('');
+  }
+  const n = editorWords.length;
+  if (label) label.textContent = n === 0 ? '' : n < 2 ? `(${n} — мінімум 2)` : `(${n} слів ✅)`;
+}
+
+function focusNext(idx, field) {
+  if (field === 'uk') document.getElementById(`uk-${idx}`)?.focus();
+  else document.querySelectorAll('.form-row')[idx]?.querySelectorAll('input')[1]?.focus();
+}
+function updateWord(i, field, val) { if (editorWords[i]) editorWords[i][field] = val; }
+function addWord() {
+  editorWords.push({ article: '', german: '', ukrainian: '', _id: Date.now() });
+  renderWordsList();
+  setTimeout(() => { const rows = document.querySelectorAll('.form-row'); rows[rows.length-1]?.querySelectorAll('input')[1]?.focus(); }, 50);
+}
+function removeWord(i) { editorWords.splice(i, 1); renderWordsList(); }
+
+// ── Word drag-and-drop ────────────────────────────────────────
+let wordDragIdx = null;
+function wordDragStart(e, i) {
+  wordDragIdx = i;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function wordDragOver(e, i) {
+  e.preventDefault();
+  if (i === wordDragIdx) return;
+  e.currentTarget.classList.add('drag-over');
+}
+function wordDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function wordDrop(e, i) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (wordDragIdx === null || wordDragIdx === i) return;
+  // sync current input values before reorder
+  document.querySelectorAll('.form-row').forEach((row, idx) => {
+    const inputs = row.querySelectorAll('input');
+    if (editorWords[idx]) {
+      editorWords[idx].article  = inputs[0]?.value.trim() || '';
+      editorWords[idx].german   = inputs[1]?.value.trim() || '';
+      editorWords[idx].ukrainian = inputs[2]?.value.trim() || '';
+    }
+  });
+  const moved = editorWords.splice(wordDragIdx, 1)[0];
+  editorWords.splice(i, 0, moved);
+  wordDragIdx = null;
+  renderWordsList();
+}
+function wordDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.form-row').forEach(r => r.classList.remove('drag-over'));
+  wordDragIdx = null;
+}
+
+// ── Topic drag-and-drop ───────────────────────────────────────
+let topicDragId  = null;
+let topicSaveTimer = null;
+
+function topicDragStart(e) {
+  topicDragId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function topicDragOver(e) {
+  e.preventDefault();
+  const row = e.currentTarget;
+  if (row.dataset.id === topicDragId) return;
+  row.classList.add('drag-over');
+}
+function topicDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function topicDrop(e) {
+  e.preventDefault();
+  const target = e.currentTarget;
+  target.classList.remove('drag-over');
+  if (!topicDragId || target.dataset.id === topicDragId) return;
+  const container = target.parentElement;
+  const rows = [...container.querySelectorAll('.topic-row')];
+  const fromEl = container.querySelector(`[data-id="${topicDragId}"]`);
+  if (!fromEl) return;
+  const fromIdx = rows.indexOf(fromEl);
+  const toIdx   = rows.indexOf(target);
+  if (fromIdx < toIdx) container.insertBefore(fromEl, target.nextSibling);
+  else                 container.insertBefore(fromEl, target);
+  // debounce save
+  clearTimeout(topicSaveTimer);
+  topicSaveTimer = setTimeout(saveTopicOrder, 600);
+}
+function topicDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.topic-row').forEach(r => r.classList.remove('drag-over'));
+}
+
+async function saveTopicOrder() {
+  const rows = document.querySelectorAll('.topic-row[data-id]');
+  const ids  = [...rows].map(r => r.dataset.id);
+  if (!ids.length) return;
+  try {
+    await apiFetch('/api/topics/reorder', { method: 'PUT', body: JSON.stringify({ ids }) });
+    toast('✅ Порядок збережено', 'success');
+  } catch {
+    toast('❌ Не вдалось зберегти порядок', 'error');
+  }
+}
+function addMultiple() { const m = document.getElementById('bulk-modal'); if (m) { m.style.display='flex'; document.getElementById('bulk-input')?.focus(); } }
+function closeBulk() { const m = document.getElementById('bulk-modal'); if (m) m.style.display='none'; }
+function parseBulk() {
+  const raw = document.getElementById('bulk-input')?.value || '';
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let added = 0;
+  for (const line of lines) {
+    const sep = line.includes('—') ? '—' : '-';
+    const parts = line.split(sep);
+    if (parts.length < 2) continue;
+    const ukr = parts.slice(1).join(sep).trim();
+    const deRaw = parts[0].trim();
+    const tokens = deRaw.split(/\s+/);
+    let article = '', german = '';
+    if (['der','die','das','ein','eine'].includes(tokens[0].toLowerCase())) { article = tokens[0]; german = tokens.slice(1).join(' '); }
+    else german = deRaw;
+    if (german && ukr) { editorWords.push({ article, german, ukrainian: ukr, _id: Date.now() + editorWords.length }); added++; }
+  }
+  closeBulk(); renderWordsList();
+  if (added) toast(`✅ Додано ${added} слів`, 'success');
+}
+
+async function saveTopic() {
+  const name   = document.getElementById('topic-name')?.value.trim();
+  const nameUk = document.getElementById('topic-name-uk')?.value.trim();
+  const desc   = document.getElementById('topic-desc')?.value.trim();
+  const emojiBtn = document.getElementById('emoji-btn');
+  const emoji  = (emojiBtn?.dataset.emoji ?? emojiBtn?.textContent?.trim()) || '';
+  if (!name || !nameUk) { toast('❌ Заповніть назву теми', 'error'); return; }
+  document.querySelectorAll('.form-row').forEach((row, i) => {
+    const inputs = row.querySelectorAll('input');
+    if (editorWords[i]) { editorWords[i].article = inputs[0]?.value.trim()||''; editorWords[i].german = inputs[1]?.value.trim()||''; editorWords[i].ukrainian = inputs[2]?.value.trim()||''; }
+  });
+  const words = editorWords.filter(w => w.german && w.ukrainian);
+  if (words.length < 2) { toast('❌ Додайте мінімум 2 слова', 'error'); return; }
+  const btn = document.getElementById('save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Зберігаємо…'; }
+  const category = document.querySelector('[name="topic-category"]:checked')?.value || 'nouns';
+  const body = { name, nameUk, description: desc, category, words, emoji: emoji === '🏷️' ? '' : emoji };
+  const method = editingId ? 'PUT' : 'POST';
+  const endpoint = editingId ? `/api/topics/${editingId}` : '/api/topics';
+  const r = await apiFetch(endpoint, { method, body: JSON.stringify(body) });
+  if (r.error) {
+    toast(`❌ ${r.error}`, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = editingId ? '💾 Зберегти зміни' : '🚀 Створити тему'; }
+  } else {
+    toast(editingId ? '✅ Зміни збережено!' : '✅ Тему створено!', 'success');
+    setTimeout(() => nav(category === 'verbs' ? '/verbs' : '/'), 800);
+  }
+}
+
+/* ════ SCENES LIST ══════════════════════════════════════════ */
+async function renderScenesList() {
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'scenes');
+  let scenes = [];
+  try {
+    scenes = await apiGet('/api/scenes');
+  } catch {
+    shell(`<div class="empty-state"><div style="font-size:2rem">⚠️</div><p>Не вдалося завантажити сцени.</p></div>`, 'scenes');
+    return;
+  }
+  _listUsedEmojis = new Set();
+  window._adminScenesData = scenes;
+  shell(`
+    <div class="top-bar">
+      <div>
+        <div class="page-title">🖼️ Сцени</div>
+        <div class="page-sub">${scenes.length || 0} сцен у базі</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="openSceneImportModal()">📥 Імпорт з файлу</button>
+        <button class="btn btn-primary" onclick="nav('/scene-new')">+ Нова сцена</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <input class="input" id="search-scenes" placeholder="🔍 Пошук по назві або слову…" oninput="filterSceneList('search-scenes','scenes-list')" onkeydown="if(event.key==='Escape'){this.value='';filterSceneList('search-scenes','scenes-list')}" autocomplete="off" style="max-width:400px" />
+    </div>
+    <div class="card" id="scenes-list">
+      ${!scenes.length ? `<div class="empty-state">Немає сцен. Створіть першу!</div>` : scenes.map((s,i)=>sceneRow(s,i)).join('')}
+    </div>`, 'scenes');
+}
+
+function sceneRow(s, i) {
+  const numBadge = i !== undefined ? `<span style="font-size:.68rem;font-weight:800;color:var(--muted);min-width:22px;text-align:right">#${i+1}</span>` : '';
+  return `
+    <div class="topic-row" data-id="${s.id}" draggable="true"
+      ondragstart="sceneDragStart(event)"
+      ondragover="sceneDragOver(event)"
+      ondragleave="sceneDragLeave(event)"
+      ondrop="sceneDrop(event)"
+      ondragend="sceneDragEnd(event)">
+      <span class="drag-handle" title="Перетягнути">⠿</span>
+      <div style="width:56px;height:40px;background:var(--surface);border-radius:6px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem">
+        ${getTopicEmoji(s, _listUsedEmojis)}
+      </div>
+      <div class="topic-row-info">
+        <div class="topic-row-name">${escHtml(s.name)}</div>
+        <div class="topic-row-sub">${escHtml(s.nameUk)} · ${s.wordCount || 0} предметів</div>
+      </div>
+      <div class="topic-row-actions">
+        ${numBadge}
+        <button class="btn btn-ghost btn-sm" onclick="nav('/scene-edit/${s.id}')">✏️ Редагувати</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteScene('${s.id}','${escHtml(s.name)}')">🗑</button>
+      </div>
+    </div>`;
+}
+
+async function deleteScene(id, name) {
+  const ok = await showAdminConfirm({
+    icon: '🗑️',
+    title: `Видалити сцену?`,
+    message: `«${name}» буде видалено назавжди.`,
+    confirmText: 'Видалити',
+    confirmClass: 'btn-danger',
+  });
+  if (!ok) return;
+  const r = await apiFetch(`/api/scenes/${id}`, { method: 'DELETE' });
+  if (r.success) { toast('✅ Сцену видалено', 'success'); renderScenesList(); }
+  else toast('❌ Помилка видалення', 'error');
+}
+
+/* ════ SCENE EDITOR ══════════════════════════════════════════ */
+let sceneWords = [];
+let editingSceneId = null;
+let sceneImageGame = '';
+let sceneImageAnswer = '';
+
+async function renderSceneEditor(id) {
+  editingSceneId = id;
+  let scene = { name: '', nameUk: '', imageGame: '', imageAnswer: '', words: [] };
+  if (id) {
+    shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'scenes');
+    try {
+      const data = await apiGet(`/api/scenes/${id}`);
+      scene = data;
+    } catch {
+      toast('❌ Сцену не знайдено', 'error'); renderScenesList(); return;
+    }
+  }
+  sceneWords = (scene.words || []).map((w, i) => ({ ...w, _id: i }));
+  sceneImageGame = scene.imageGame || '';
+  sceneImageAnswer = scene.imageAnswer || '';
+  const currentSceneEmoji = scene.emoji || getTopicEmoji(scene, null);
+
+  shell(`
+    <div class="editor-header">
+      <button class="btn btn-ghost btn-sm" onclick="nav('/scenes')">← Назад</button>
+      <div class="page-title" style="margin-top:16px">${id ? '✏️ Редагувати сцену' : '➕ Нова сцена'}</div>
+    </div>
+
+    <div class="card" style="padding:28px;margin-bottom:24px">
+      <div class="editor-section-title">📝 Основна інформація</div>
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:16px;align-items:end">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Емодзі</label>
+          <button id="emoji-btn" onclick="toggleEmojiPicker()" style="
+            width:56px;height:44px;font-size:1.6rem;line-height:1;
+            background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);
+            cursor:pointer;transition:border-color .2s;display:flex;align-items:center;justify-content:center"
+            title="Вибрати емодзі" data-emoji="${scene.emoji || ''}">${currentSceneEmoji}</button>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Назва (нім.)</label>
+          <input class="input" id="scene-name" value="${escHtml(scene.name)}" placeholder="z.B. Der Supermarkt" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Назва (укр.)</label>
+          <input class="input" id="scene-name-uk" value="${escHtml(scene.nameUk)}" placeholder="Супермаркет" />
+        </div>
+      </div>
+      <div id="emoji-picker" style="display:none;margin-top:12px;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px">
+        <div style="font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Оберіть емодзі</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${[
+            '🏠','🛒','🍽️','🏫','🌳','🏖️','🚗','✈️','🏥','🎨',
+            '🍕','🛍️','🏋️','🌿','🔧','🎯','🏡','🌆','🌇','🌉',
+            '🏔️','🏕️','🏟️','🏛️','🏙️','🗽','🗼','🎪','🎠','🎡',
+            '🎢','🎬','🎭','🖌️','🖼️','🧳','🧭','⛺','🌲','🌴',
+            '🌵','🌾','🌻','🌺','🏗️','🏘️','🚀','🎓','🌍','📷'
+          ].map(e => `<button onclick="selectEmoji('${e}')" style="
+            font-size:1.4rem;width:40px;height:40px;background:transparent;border:1px solid transparent;
+            border-radius:8px;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center"
+            onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='transparent'">${e}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:28px;margin-bottom:24px">
+      <div class="editor-section-title">🖼️ Картинки</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+        <div>
+          <label style="margin-bottom:10px">З НОМЕРАМИ (для гри)</label>
+          <div class="img-upload-zone" id="zone-game" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'game')">
+            <input type="file" accept="image/*" onchange="handleFileSelect(this,'game')" />
+            <div class="zone-icon">📷</div>
+            <div class="zone-label"><strong>Клікніть або перетягніть</strong><br>зображення з номерами</div>
+          </div>
+          <div class="img-uploading" id="uploading-game">⏳ Завантажуємо…</div>
+          <div class="img-uploaded" id="uploaded-game">✅ Завантажено</div>
+          <img class="img-preview" id="preview-game" src="${escHtml(sceneImageGame)}" ${sceneImageGame ? 'style="display:block"' : ''} />
+          <button class="img-clear-btn ${sceneImageGame ? 'show' : ''}" id="clear-game" onclick="clearImage('game')">✕ Видалити картинку</button>
+        </div>
+
+        <div>
+          <label style="margin-bottom:10px">З ПІДПИСАМИ (відповіді)</label>
+          <div class="img-upload-zone" id="zone-answer" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,'answer')">
+            <input type="file" accept="image/*" onchange="handleFileSelect(this,'answer')" />
+            <div class="zone-icon">🏷️</div>
+            <div class="zone-label"><strong>Клікніть або перетягніть</strong><br>зображення з підписами</div>
+          </div>
+          <div class="img-uploading" id="uploading-answer">⏳ Завантажуємо…</div>
+          <div class="img-uploaded" id="uploaded-answer">✅ Завантажено</div>
+          <img class="img-preview" id="preview-answer" src="${escHtml(sceneImageAnswer)}" ${sceneImageAnswer ? 'style="display:block"' : ''} />
+          <button class="img-clear-btn ${sceneImageAnswer ? 'show' : ''}" id="clear-answer" onclick="clearImage('answer')">✕ Видалити картинку</button>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card" style="padding:28px;margin-bottom:24px">
+      <div class="editor-section-title">
+        📋 Слова
+        <span style="font-size:.8rem;color:var(--muted);font-weight:400" id="scene-words-count"></span>
+      </div>
+      <div class="scene-words-header">
+        <span>#</span><span>Артикль</span><span>Слово (нім.)</span><span>Переклад (укр.)</span><span></span>
+      </div>
+      <div id="scene-words-list"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost" onclick="addSceneWord()">+ Додати слово</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="addSceneBulk()">📋 Вставити список</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-lg" onclick="nav('/scenes')">Скасувати</button>
+      <button class="btn btn-primary btn-lg" id="scene-save-btn" onclick="saveScene()">
+        ${id ? '💾 Зберегти зміни' : '🚀 Створити сцену'}
+      </button>
+    </div>
+    <div id="scene-bulk-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:200;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r-lg);padding:28px;width:100%;max-width:560px">
+        <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:700;margin-bottom:8px">📋 Вставити список слів</div>
+        <div style="color:var(--muted);font-size:.85rem;margin-bottom:14px">
+          Формат: <code style="color:var(--cyan)">номер артикль слово — переклад</code><br>
+          Приклад: <code style="color:var(--gold)">1 das Brot — хліб</code> або <code style="color:var(--gold)">1 laufen — бігти</code>
+        </div>
+        <textarea class="input" id="scene-bulk-input" style="height:200px;resize:vertical;font-family:monospace;font-size:.85rem"
+          placeholder="1 das Brot — хліб&#10;2 die Milch — молоко&#10;3 der Käse — сир"></textarea>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost" onclick="closeSceneBulk()">Скасувати</button>
+          <button class="btn btn-primary" onclick="parseSceneBulk()">Додати слова</button>
+        </div>
+      </div>
+    </div>`, 'scenes');
+
+  renderSceneWordsList();
+}
+
+function renderSceneWordsList() {
+  const list = document.getElementById('scene-words-list');
+  const label = document.getElementById('scene-words-count');
+  if (!list) return;
+  if (sceneWords.length === 0) {
+    list.innerHTML = `<div style="color:var(--muted);text-align:center;padding:24px;font-size:.9rem">Додайте слова відповідно до номерів на картинці.</div>`;
+  } else {
+    list.innerHTML = sceneWords.map((w, i) => `
+      <div class="scene-form-row" data-sidx="${i}">
+        <input class="input" value="${w.number ?? i+1}" type="number" min="1" style="text-align:center;font-weight:700"
+          onchange="updateSceneWord(${i},'number',parseInt(this.value)||${i+1})" />
+        <input class="input" value="${escHtml(w.article||'')}" placeholder="der/die/das"
+          onchange="updateSceneWord(${i},'article',this.value)" />
+        <input class="input" value="${escHtml(w.german||'')}" placeholder="Brot"
+          onchange="updateSceneWord(${i},'german',this.value)"
+          onkeydown="if(event.key==='Enter')focusSceneNext(${i})" />
+        <input class="input" value="${escHtml(w.ukrainian||'')}" placeholder="хліб"
+          onchange="updateSceneWord(${i},'ukrainian',this.value)" id="suk-${i}"
+          onkeydown="if(event.key==='Enter'){if(${i}===sceneWords.length-1)addSceneWord();else focusSceneNext(${i+1});}" />
+        <button class="remove-btn" onclick="removeSceneWord(${i})">×</button>
+      </div>`).join('');
+  }
+  if (label) label.textContent = sceneWords.length ? `(${sceneWords.length} слів)` : '';
+}
+
+function focusSceneNext(idx) { document.getElementById(`suk-${idx}`)?.focus(); }
+function updateSceneWord(i, field, val) { if (sceneWords[i]) sceneWords[i][field] = val; }
+function addSceneWord() {
+  const nextNum = sceneWords.length ? Math.max(...sceneWords.map(w => w.number || 0)) + 1 : 1;
+  sceneWords.push({ number: nextNum, article: '', german: '', ukrainian: '', _id: Date.now() });
+  renderSceneWordsList();
+  setTimeout(() => { const rows = document.querySelectorAll('.scene-form-row'); rows[rows.length-1]?.querySelectorAll('input')[2]?.focus(); }, 50);
+}
+function removeSceneWord(i) { sceneWords.splice(i, 1); renderSceneWordsList(); }
+
+// ── Scene bulk paste ──────────────────────────────────────────
+function addSceneBulk() { const m = document.getElementById('scene-bulk-modal'); if (m) { m.style.display='flex'; document.getElementById('scene-bulk-input')?.focus(); } }
+function closeSceneBulk() { const m = document.getElementById('scene-bulk-modal'); if (m) m.style.display='none'; }
+function parseSceneBulk() {
+  const raw = document.getElementById('scene-bulk-input')?.value || '';
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let added = 0;
+  for (const line of lines) {
+    const sep = line.includes('—') ? '—' : '-';
+    const parts = line.split(sep);
+    if (parts.length < 2) continue;
+    const ukr = parts.slice(1).join(sep).trim();
+    const deRaw = parts[0].trim();
+    const tokens = deRaw.split(/\s+/);
+    let number = sceneWords.length ? Math.max(...sceneWords.map(w => w.number || 0)) + 1 : 1;
+    let article = '', german = '';
+    let rest = tokens;
+    // First token could be a number
+    if (/^\d+$/.test(tokens[0])) { number = parseInt(tokens[0]); rest = tokens.slice(1); }
+    if (['der','die','das','ein','eine'].includes((rest[0]||'').toLowerCase())) { article = rest[0]; german = rest.slice(1).join(' '); }
+    else german = rest.join(' ');
+    if (german && ukr) { sceneWords.push({ number, article, german, ukrainian: ukr, _id: Date.now() + sceneWords.length }); added++; }
+  }
+  closeSceneBulk(); renderSceneWordsList();
+  if (added) toast(`✅ Додано ${added} слів`, 'success');
+}
+
+// ── Scene list drag-and-drop ──────────────────────────────────
+let sceneDragId = null;
+let sceneSaveTimer = null;
+
+function sceneDragStart(e) {
+  sceneDragId = e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function sceneDragOver(e) {
+  e.preventDefault();
+  const row = e.currentTarget;
+  if (row.dataset.id === sceneDragId) return;
+  row.classList.add('drag-over');
+}
+function sceneDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function sceneDrop(e) {
+  e.preventDefault();
+  const target = e.currentTarget;
+  target.classList.remove('drag-over');
+  if (!sceneDragId || target.dataset.id === sceneDragId) return;
+  const container = target.parentElement;
+  const rows = [...container.querySelectorAll('.topic-row')];
+  const fromEl = container.querySelector(`[data-id="${sceneDragId}"]`);
+  if (!fromEl) return;
+  const fromIdx = rows.indexOf(fromEl);
+  const toIdx   = rows.indexOf(target);
+  if (fromIdx < toIdx) container.insertBefore(fromEl, target.nextSibling);
+  else                 container.insertBefore(fromEl, target);
+  clearTimeout(sceneSaveTimer);
+  sceneSaveTimer = setTimeout(saveSceneOrder, 600);
+}
+function sceneDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('#scenes-list .topic-row').forEach(r => r.classList.remove('drag-over'));
+}
+async function saveSceneOrder() {
+  const rows = document.querySelectorAll('#scenes-list .topic-row[data-id]');
+  const ids  = [...rows].map(r => r.dataset.id);
+  if (!ids.length) return;
+  try {
+    await apiFetch('/api/scenes/reorder', { method: 'PUT', body: JSON.stringify({ ids }) });
+    toast('✅ Порядок збережено', 'success');
+  } catch {
+    toast('❌ Не вдалось зберегти порядок', 'error');
+  }
+}
+
+// ── Scene import modal ────────────────────────────────────────
+let scenesImportParsed = [];
+
+function parseScenesTxt(text) {
+  const scenes = [];
+  const blocks = text.replace(/\r\n/g, '\n').split(/\n{2,}/);
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) continue;
+    const headerMatch = lines[0].match(/^(.+?)\s*—\s*(.*)$/);
+    if (!headerMatch) continue;
+    const name   = headerMatch[1].trim();
+    const nameUk = headerMatch[2].trim() || name;
+    const words  = [];
+    for (let i = 1; i < lines.length; i++) {
+      const wm = lines[i].match(/^(.+?)\s*—\s*(.+)$/);
+      if (!wm) continue;
+      const rawGerman = wm[1].trim(), ukrainian = wm[2].trim();
+      if (!rawGerman || !ukrainian) continue;
+      const tokens = rawGerman.split(/\s+/);
+      let number = i, article = '', german = '';
+      let rest = tokens;
+      if (/^\d+$/.test(tokens[0])) { number = parseInt(tokens[0]); rest = tokens.slice(1); }
+      if (['der','die','das','ein','eine'].includes((rest[0]||'').toLowerCase())) { article = rest[0]; german = rest.slice(1).join(' '); }
+      else german = rest.join(' ');
+      words.push({ number, article, german, ukrainian });
+    }
+    if (words.length >= 1) scenes.push({ name, nameUk, words });
+  }
+  return scenes;
+}
+
+function openSceneImportModal() {
+  scenesImportParsed = [];
+  const wrap = document.createElement('div');
+  wrap.id = 'scene-imp-modal-root';
+  wrap.innerHTML = `
+    <div id="scene-imp-backdrop" onclick="closeSceneImportModal()"
+      style="position:fixed;inset:0;z-index:1000;background:#0009;backdrop-filter:blur(4px);
+             display:flex;align-items:center;justify-content:center;padding:16px">
+      <div onclick="event.stopPropagation()" style="
+        background:var(--card);border:1px solid var(--border2);border-radius:20px;
+        width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;
+        box-shadow:0 24px 80px #0008">
+        <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div>
+            <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:800">📥 Імпорт сцен</div>
+            <div style="color:var(--muted);font-size:.82rem;margin-top:2px">Завантаж .txt — сцени створяться автоматично</div>
+          </div>
+          <button onclick="closeSceneImportModal()" style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:1rem;color:var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--font-b)">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+          <details>
+            <summary style="font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;user-select:none">📋 Формат файлу</summary>
+            <pre style="font-family:monospace;font-size:.8rem;color:var(--muted);line-height:1.7;white-space:pre-wrap;margin-top:10px;background:var(--surface);padding:12px 14px;border-radius:10px">Назва сцени — Переклад сцени
+1 das Brot — хліб
+2 die Milch — молоко
+3 der Käse — сир
+
+Наступна сцена — Переклад
+...</pre>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:6px">
+              Сцени розділяються <strong style="color:var(--text)">порожнім рядком</strong>. Артиклі <code style="background:var(--surface);padding:1px 5px;border-radius:4px">der/die/das</code> розпізнаються автоматично.
+            </div>
+          </details>
+          <div class="img-upload-zone" id="scene-imp-drop-zone"
+            onclick="document.getElementById('scene-imp-file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleSceneImpDrop(event)"
+            style="min-height:100px">
+            <input type="file" id="scene-imp-file-input" accept=".txt" style="display:none" onchange="handleSceneImpFile(this.files[0])">
+            <div class="zone-icon">📄</div>
+            <div class="zone-label"><strong>Натисни або перетягни</strong> .txt файл сюди</div>
+          </div>
+          <div id="scene-imp-preview"></div>
+          <div id="scene-imp-progress"></div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSceneImportModal() {
+  const root = document.getElementById('scene-imp-modal-root');
+  if (root) root.remove();
+  document.body.style.overflow = '';
+}
+
+function handleSceneImpDrop(e) {
+  e.preventDefault();
+  document.getElementById('scene-imp-drop-zone')?.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleSceneImpFile(file);
+}
+
+function handleSceneImpFile(file) {
+  if (!file || !file.name.endsWith('.txt')) { toast('Потрібен .txt файл', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    scenesImportParsed = parseScenesTxt(ev.target.result);
+    renderSceneImpPreview(scenesImportParsed);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderSceneImpPreview(scenes) {
+  const preview = document.getElementById('scene-imp-preview');
+  if (!preview) return;
+  if (!scenes.length) {
+    preview.innerHTML = `<div style="padding:16px;text-align:center;color:var(--red);background:var(--surface);border-radius:12px">⚠️ Не вдалося розпізнати жодної сцени. Перевір формат файлу.</div>`;
+    return;
+  }
+  const rows = scenes.map((s, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="simp-chk-${i}" checked style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.88rem">${escHtml(s.name)}<span style="color:var(--muted);font-weight:400"> — ${escHtml(s.nameUk)}</span></div>
+        <div style="color:var(--muted);font-size:.77rem;margin-top:1px">${s.words.length} предметів · ${s.words.slice(0,4).map(w=>escHtml((w.article?w.article+' ':'')+w.german)).join(', ')}${s.words.length>4?'…':''}</div>
+      </div>
+    </div>`).join('');
+  preview.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="font-weight:700;font-size:.9rem">🔍 Знайдено: <span style="color:var(--primary)">${scenes.length}</span> сцен</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="sceneImpSelectAll(true)">Всі</button>
+          <button class="btn btn-ghost btn-sm" onclick="sceneImpSelectAll(false)">Жодної</button>
+        </div>
+      </div>
+      <div style="max-height:260px;overflow-y:auto">${rows}</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="runSceneImport()">🚀 Імпортувати вибрані сцени</button>`;
+}
+
+function sceneImpSelectAll(val) {
+  scenesImportParsed.forEach((_, i) => { const c = document.getElementById(`simp-chk-${i}`); if (c) c.checked = val; });
+}
+
+async function runSceneImport() {
+  const selected = scenesImportParsed.filter((_, i) => { const c = document.getElementById(`simp-chk-${i}`); return c && c.checked; });
+  if (!selected.length) { toast('Нічого не вибрано', 'error'); return; }
+  const preview  = document.getElementById('scene-imp-preview');
+  const progress = document.getElementById('scene-imp-progress');
+  if (preview) preview.innerHTML = '';
+  let done = 0, failed = 0;
+  const errors = [];
+
+  function updateProgress() {
+    if (!progress) return;
+    const total = selected.length, pct = Math.round(((done+failed)/total)*100);
+    progress.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px">
+        <div style="font-weight:600;font-size:.9rem;margin-bottom:10px">⏳ ${done+failed} / ${total}${failed ? ` <span style="color:var(--red);font-size:.82rem">${failed} помилок</span>` : ''}</div>
+        <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--primary),var(--cyan));border-radius:99px;transition:width .25s"></div>
+        </div>
+      </div>`;
+  }
+
+  updateProgress();
+  for (let i = 0; i < selected.length; i++) {
+    const scene = selected[i];
+    try {
+      await apiFetch('/api/scenes', { method: 'POST', body: JSON.stringify({
+        name: scene.name, nameUk: scene.nameUk, words: scene.words,
+        imageGame: '', imageAnswer: '',
+      })});
+      done++;
+    } catch (e) { failed++; errors.push(`${scene.name}: ${e.message}`); }
+    updateProgress();
+  }
+
+  const errBlock = errors.length
+    ? `<details style="margin-top:10px;text-align:left"><summary style="cursor:pointer;color:var(--red);font-size:.82rem">${errors.length} помилок</summary><pre style="font-size:.75rem;color:var(--muted);margin-top:6px;white-space:pre-wrap">${errors.map(escHtml).join('\n')}</pre></details>`
+    : '';
+  if (progress) progress.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:24px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:8px">${failed===0?'🎉':'⚠️'}</div>
+      <div style="font-weight:700;margin-bottom:4px">${failed===0?'Імпорт завершено!':'Імпорт із помилками'}</div>
+      <div style="color:var(--muted);font-size:.85rem">Успішно: <strong style="color:var(--green)">${done}</strong> · Помилок: <strong style="color:${failed?'var(--red)':'var(--muted)'}">${failed}</strong></div>
+      ${errBlock}
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="closeSceneImportModal();renderScenesList()">🖼️ До сцен</button>
+        <button class="btn btn-primary btn-sm" onclick="closeSceneImportModal();openSceneImportModal()">📥 Новий імпорт</button>
+      </div>
+    </div>`;
+}
+
+/* ── Image upload helpers ─────────────────────────────────── */
+function handleDrop(e, slot) {
+  e.preventDefault();
+  document.getElementById(`zone-${slot}`)?.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadImage(file, slot);
+}
+function handleFileSelect(input, slot) {
+  const file = input.files[0];
+  if (file) uploadImage(file, slot);
+}
+function clearImage(slot) {
+  if (slot === 'game') sceneImageGame = '';
+  else sceneImageAnswer = '';
+  const preview = document.getElementById(`preview-${slot}`);
+  const uploaded = document.getElementById(`uploaded-${slot}`);
+  const clearBtn = document.getElementById(`clear-${slot}`);
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  if (uploaded) uploaded.classList.remove('show');
+  if (clearBtn) clearBtn.classList.remove('show');
+}
+
+// Стискає картинку через Canvas і повертає base64 data URL
+// Максимальний розмір сторони: 1200px, якість JPEG: 0.82 => ~100-200KB
+async function compressImage(file, maxSide = 1200, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxSide || height > maxSide) {
+        if (width > height) { height = Math.round(height * maxSide / width); width = maxSide; }
+        else { width = Math.round(width * maxSide / height); height = maxSide; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function uploadImage(file, slot) {
+  const uploadingEl = document.getElementById(`uploading-${slot}`);
+  const uploadedEl  = document.getElementById(`uploaded-${slot}`);
+  const previewEl   = document.getElementById(`preview-${slot}`);
+  const clearBtn    = document.getElementById(`clear-${slot}`);
+
+  if (uploadingEl) { uploadingEl.textContent = '⏳ Стискаємо…'; uploadingEl.classList.add('show'); }
+  if (uploadedEl) uploadedEl.classList.remove('show');
+
+  try {
+    const dataUrl = await compressImage(file);
+    const kb = Math.round(dataUrl.length * 0.75 / 1024);
+
+    if (slot === 'game') sceneImageGame = dataUrl;
+    else sceneImageAnswer = dataUrl;
+
+    if (previewEl) { previewEl.src = dataUrl; previewEl.style.display = 'block'; }
+    if (uploadedEl) { uploadedEl.textContent = `✅ Готово (~${kb}KB)`; uploadedEl.classList.add('show'); }
+    if (clearBtn) clearBtn.classList.add('show');
+    toast(`✅ Картинку оброблено (~${kb}KB)`, 'success');
+  } catch (err) {
+    toast(`❌ Помилка обробки: ${err.message}`, 'error');
+    clearImage(slot);
+  } finally {
+    if (uploadingEl) uploadingEl.classList.remove('show');
+  }
+}
+
+async function saveScene() {
+  const name   = document.getElementById('scene-name')?.value.trim();
+  const nameUk = document.getElementById('scene-name-uk')?.value.trim();
+  if (!name || !nameUk) { toast('❌ Заповніть назву сцени', 'error'); return; }
+
+  // Collect current input values
+  document.querySelectorAll('.scene-form-row').forEach((row, i) => {
+    const inputs = row.querySelectorAll('input');
+    if (sceneWords[i]) {
+      sceneWords[i].number   = parseInt(inputs[0]?.value) || i + 1;
+      sceneWords[i].article  = inputs[1]?.value.trim() || '';
+      sceneWords[i].german   = inputs[2]?.value.trim() || '';
+      sceneWords[i].ukrainian = inputs[3]?.value.trim() || '';
+    }
+  });
+
+  const words = sceneWords.filter(w => w.german && w.ukrainian);
+  if (words.length < 1) { toast('❌ Додайте хоча б одне слово', 'error'); return; }
+
+  const btn = document.getElementById('scene-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Зберігаємо…'; }
+
+  const emoji = document.getElementById('emoji-btn')?.dataset.emoji || '';
+  const body = { name, nameUk, emoji, imageGame: sceneImageGame, imageAnswer: sceneImageAnswer, words };
+  const method = editingSceneId ? 'PUT' : 'POST';
+  const endpoint = editingSceneId ? `/api/scenes/${editingSceneId}` : '/api/scenes';
+
+  const r = await apiFetch(endpoint, { method, body: JSON.stringify(body) });
+  if (r.error) {
+    toast(`❌ ${r.error}`, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = editingSceneId ? '💾 Зберегти зміни' : '🚀 Створити сцену'; }
+  } else {
+    toast(editingSceneId ? '✅ Зміни збережено!' : '✅ Сцену створено!', 'success');
+    setTimeout(() => nav('/scenes'), 800);
+  }
+}
+
+/* ════ API helpers ══════════════════════════════════════════ */
+async function apiGet(path) {
+  // [FIX] Раніше повертало {} при помилці — неможливо відрізнити від "порожній об'єкт".
+  // Тепер кидає помилку, яку caller може обробити (або показати toast).
+  const r = await fetch(`${BACKEND_URL}${path}`, { headers: { 'x-admin-token': adminToken } });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+async function apiFetch(path, opts = {}) {
+  try {
+    const r = await fetch(`${BACKEND_URL}${path}`, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken, ...(opts.headers || {}) },
+    });
+    return await r.json();
+  } catch (e) { return { error: e.message }; }
+}
+
+/* ════ Toast ════════════════════════════════════════════════ */
+let toastTimeout;
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  clearTimeout(toastTimeout);
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  toastTimeout = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+/* ════ Utils ════════════════════════════════════════════════ */
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+const escH = escHtml;
+
+/* ════ IMPORT MODAL ══════════════════════════════════════════ */
+
+function parseNounsTxt(text) {
+  return parseTxtGeneric(text, 'nouns', rawGerman => {
+    const m = rawGerman.match(/^(der|die|das)\s+(.+)$/i);
+    return { article: m ? m[1].toLowerCase() : '', german: m ? m[2].trim() : rawGerman };
+  });
+}
+
+function parseVerbsTxt(text) {
+  return parseTxtGeneric(text, 'verbs', rawGerman => ({ article: '', german: rawGerman }));
+}
+
+function parseTxtGeneric(text, category, wordParser) {
+  const topics = [];
+  const blocks = text.replace(/\r\n/g, '\n').split(/\n{2,}/);
+  for (const block of blocks) {
+    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) continue;
+    const headerMatch = lines[0].match(/^(.+?)\s*—\s*(.*)$/);
+    if (!headerMatch) continue;
+    if (/^(der|die|das)$/i.test(lines[0].split(/\s+/)[0])) continue;
+    const name   = headerMatch[1].trim();
+    const nameUk = headerMatch[2].trim() || name;
+    const words  = [];
+    for (let i = 1; i < lines.length; i++) {
+      const wm = lines[i].match(/^(.+?)\s*—\s*(.+)$/);
+      if (!wm) continue;
+      const rawGerman = wm[1].trim(), ukrainian = wm[2].trim();
+      if (!rawGerman || !ukrainian) continue;
+      const { article, german } = wordParser(rawGerman);
+      words.push({ german, ukrainian, article });
+    }
+    if (words.length >= 2) topics.push({ name, nameUk, words, category });
+  }
+  return topics;
+}
+
+let importParsed   = [];
+let importCategory = 'nouns';
+
+function openImportModal(category) {
+  importCategory = category;
+  importParsed   = [];
+  const label    = category === 'verbs' ? 'дієслів' : 'іменників';
+  const formatEx = category === 'verbs'
+    ? 'Назва теми — Переклад теми\nsein — Бути\nsich waschen — Митися\nAngst haben — Боятися\n\nНаступна тема — Переклад\n...'
+    : 'Назва теми — Переклад теми\nder Mensch — Людина\ndie heiße Kakao — Гарячий шоколад\ndas Kind — Дитина\n\nНаступна тема — Переклад\n...';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'imp-modal-root';
+  wrap.innerHTML = `
+    <div id="imp-modal-backdrop" onclick="closeImportModal()"
+      style="position:fixed;inset:0;z-index:1000;background:#0009;backdrop-filter:blur(4px);
+             display:flex;align-items:center;justify-content:center;padding:16px">
+      <div onclick="event.stopPropagation()" style="
+        background:var(--card);border:1px solid var(--border2);border-radius:20px;
+        width:100%;max-width:580px;max-height:90vh;display:flex;flex-direction:column;
+        box-shadow:0 24px 80px #0008">
+        <div style="padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div>
+            <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:800">📥 Імпорт ${label}</div>
+            <div style="color:var(--muted);font-size:.82rem;margin-top:2px">Завантаж .txt — теми створяться автоматично</div>
+          </div>
+          <button onclick="closeImportModal()" style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:1rem;color:var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--font-b)">✕</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:16px">
+          <details>
+            <summary style="font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;user-select:none">📋 Формат файлу</summary>
+            <pre style="font-family:monospace;font-size:.8rem;color:var(--muted);line-height:1.7;white-space:pre-wrap;margin-top:10px;background:var(--surface);padding:12px 14px;border-radius:10px">${escHtml(formatEx)}</pre>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:6px">
+              Теми розділяються <strong style="color:var(--text)">порожнім рядком</strong>.
+              ${category === 'nouns'
+                ? 'Артиклі <code style="background:var(--surface);padding:1px 5px;border-radius:4px">der/die/das</code> розпізнаються автоматично, включно з багатослівними: <code style="background:var(--surface);padding:1px 5px;border-radius:4px">die heiße Kakao</code>.'
+                : 'Дієслова без артиклів. Підтримуються: <code style="background:var(--surface);padding:1px 5px;border-radius:4px">sich waschen</code>, <code style="background:var(--surface);padding:1px 5px;border-radius:4px">Zähne putzen</code>, <code style="background:var(--surface);padding:1px 5px;border-radius:4px">Angst haben</code> тощо.'}
+            </div>
+          </details>
+          <div class="img-upload-zone" id="imp-drop-zone"
+            onclick="document.getElementById('imp-file-input').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleImpDrop(event)"
+            style="min-height:100px">
+            <input type="file" id="imp-file-input" accept=".txt" style="display:none" onchange="handleImpFile(this.files[0])">
+            <div class="zone-icon">📄</div>
+            <div class="zone-label"><strong>Натисни або перетягни</strong> .txt файл сюди</div>
+          </div>
+          <div id="imp-preview"></div>
+          <div id="imp-progress"></div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeImportModal() {
+  const root = document.getElementById('imp-modal-root');
+  if (root) root.remove();
+  document.body.style.overflow = '';
+}
+
+function handleImpDrop(e) {
+  e.preventDefault();
+  document.getElementById('imp-drop-zone')?.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) handleImpFile(file);
+}
+
+function handleImpFile(file) {
+  if (!file || !file.name.endsWith('.txt')) { toast('Потрібен .txt файл', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    importParsed = importCategory === 'verbs' ? parseVerbsTxt(ev.target.result) : parseNounsTxt(ev.target.result);
+    renderImpPreview(importParsed);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function renderImpPreview(topics) {
+  const preview = document.getElementById('imp-preview');
+  if (!preview) return;
+  if (!topics.length) {
+    preview.innerHTML = `<div style="padding:16px;text-align:center;color:var(--red);background:var(--surface);border-radius:12px">⚠️ Не вдалося розпізнати жодної теми. Перевір формат файлу.</div>`;
+    return;
+  }
+  const rows = topics.map((t, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="imp-chk-${i}" checked style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.88rem">${escHtml(t.name)}<span style="color:var(--muted);font-weight:400"> — ${escHtml(t.nameUk)}</span></div>
+        <div style="color:var(--muted);font-size:.77rem;margin-top:1px">${t.words.length} слів · ${t.words.slice(0,4).map(w=>escHtml((w.article?w.article+' ':'')+w.german)).join(', ')}${t.words.length>4?'…':''}</div>
+      </div>
+    </div>`).join('');
+  preview.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div style="font-weight:700;font-size:.9rem">🔍 Знайдено: <span style="color:var(--primary)">${topics.length}</span> тем</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="impSelectAll(true)">Всі</button>
+          <button class="btn btn-ghost btn-sm" onclick="impSelectAll(false)">Жодної</button>
+        </div>
+      </div>
+      <div style="max-height:260px;overflow-y:auto">${rows}</div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="runImport()">🚀 Імпортувати вибрані теми</button>`;
+}
+
+function impSelectAll(val) {
+  importParsed.forEach((_, i) => { const c = document.getElementById(`imp-chk-${i}`); if (c) c.checked = val; });
+}
+
+async function runImport() {
+  const selected = importParsed.filter((_, i) => { const c = document.getElementById(`imp-chk-${i}`); return c && c.checked; });
+  if (!selected.length) { toast('Нічого не вибрано', 'error'); return; }
+  const preview  = document.getElementById('imp-preview');
+  const progress = document.getElementById('imp-progress');
+  if (preview) preview.innerHTML = '';
+  let done = 0, failed = 0;
+  const errors = [];
+
+  // Get current max order to append after existing topics
+  let baseOrder = 0;
+  try {
+    const existing = await apiGet('/api/topics');
+    baseOrder = existing.length;
+  } catch {}
+
+  function updateProgress() {
+    if (!progress) return;
+    const total = selected.length, pct = Math.round(((done+failed)/total)*100);
+    progress.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:20px">
+        <div style="font-weight:600;font-size:.9rem;margin-bottom:10px">⏳ ${done+failed} / ${total}${failed ? ` <span style="color:var(--red);font-size:.82rem">${failed} помилок</span>` : ''}</div>
+        <div style="background:var(--border);border-radius:99px;height:7px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--primary),var(--cyan));border-radius:99px;transition:width .25s"></div>
+        </div>
+      </div>`;
+  }
+
+  updateProgress();
+  // Send in order: first topic in file gets lowest order number → appears first
+  for (let i = 0; i < selected.length; i++) {
+    const topic = selected[i];
+    try {
+      await apiFetch('/api/topics', { method: 'POST', body: JSON.stringify({
+        name: topic.name, nameUk: topic.nameUk, description: '',
+        category: importCategory, words: topic.words,
+        order: baseOrder + i,
+      })});
+      done++;
+    } catch (e) { failed++; errors.push(`${topic.name}: ${e.message}`); }
+    updateProgress();
+  }
+
+  const errBlock = errors.length
+    ? `<details style="margin-top:10px;text-align:left"><summary style="cursor:pointer;color:var(--red);font-size:.82rem">${errors.length} помилок</summary><pre style="font-size:.75rem;color:var(--muted);margin-top:6px;white-space:pre-wrap">${errors.map(escHtml).join('\n')}</pre></details>`
+    : '';
+  if (progress) progress.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:24px;text-align:center">
+      <div style="font-size:2rem;margin-bottom:8px">${failed===0?'🎉':'⚠️'}</div>
+      <div style="font-weight:700;margin-bottom:4px">${failed===0?'Імпорт завершено!':'Імпорт із помилками'}</div>
+      <div style="color:var(--muted);font-size:.85rem">Успішно: <strong style="color:var(--green)">${done}</strong> · Помилок: <strong style="color:${failed?'var(--red)':'var(--muted)'}">${failed}</strong></div>
+      ${errBlock}
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="closeImportModal();${importCategory==='verbs'?'renderVerbsList()':'renderNounsList()'}">
+          ${importCategory==='verbs'?'🔤 До дієслів':'📝 До іменників'}
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="closeImportModal();openImportModal('${importCategory}')">📥 Новий імпорт</button>
+      </div>
+    </div>`;
+}
+
+let _onlineInterval = null;
+let _lastOnlineCount = null;
+
+// Унікальний ID вкладки адмін-панелі
+const _adminSid = (() => {
+  try {
+    let id = sessionStorage.getItem('_adminPingId');
+    if (!id) { id = 'a_' + crypto.randomUUID(); sessionStorage.setItem('_adminPingId', id); }
+    return id;
+  } catch { return 'a_' + Math.random().toString(36).slice(2); }
+})();
+
+async function fetchOnlineCount() {
+  try {
+    // [OPT] Ping адмін-сесії окремо — з префіксом 'a_', який не рахується у /api/online-count
+    // (сервер рахує лише sid що починаються з 'u_')
+    fetch(`${BACKEND_URL}/api/ping?sid=${_adminSid}`).catch(() => {});
+    const r = await fetch(`${BACKEND_URL}/api/online-count`, {
+      headers: { 'x-admin-token': adminToken },
+    });
+    if (!r.ok) return;
+    const { online } = await r.json();
+    _lastOnlineCount = online;
+    const el = document.getElementById('online-count');
+    if (el) el.textContent = online;
+  } catch {}
+}
+
+function startOnlinePolling() {
+  fetchOnlineCount();
+  if (_onlineInterval) clearInterval(_onlineInterval);
+  _onlineInterval = setInterval(fetchOnlineCount, 30000); // [OPT] 30s достатньо
+}
+
+function stopOnlinePolling() {
+  if (_onlineInterval) { clearInterval(_onlineInterval); _onlineInterval = null; }
+}
+
+function toggleAdminMobileMenu(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('admin-mobile-menu');
+  const btn = e.currentTarget;
+  if (!menu) return;
+  const isOpen = menu.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+}
+
+function closeAdminMobileMenu() {
+  const menu = document.getElementById('admin-mobile-menu');
+  const btn = document.querySelector('.nav-hamburger');
+  if (menu) menu.classList.remove('open');
+  if (btn) btn.classList.remove('open');
+}
+
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('admin-mobile-menu');
+  const nav = document.querySelector('nav');
+  if (menu && menu.classList.contains('open') && nav && !nav.contains(e.target)) {
+    closeAdminMobileMenu();
+  }
+  // Close emoji picker on outside click
+  const picker = document.getElementById('emoji-picker');
+  const btn    = document.getElementById('emoji-btn');
+  if (picker && picker.style.display !== 'none' && !picker.contains(e.target) && e.target !== btn) {
+    picker.style.display = 'none';
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  // Close scene import modal
+  if (document.getElementById('scene-imp-modal-root')) { closeSceneImportModal(); return; }
+  // Close import modal
+  if (document.getElementById('imp-modal-root')) { closeImportModal(); return; }
+  // Close emoji picker
+  const picker = document.getElementById('emoji-picker');
+  if (picker && picker.style.display !== 'none') { picker.style.display = 'none'; return; }
+  // Close bulk modal
+  const bulk = document.getElementById('bulk-modal');
+  if (bulk && bulk.style.display !== 'none') { closeBulk(); return; }
+  // Close scene bulk modal
+  const sceneBulk = document.getElementById('scene-bulk-modal');
+  if (sceneBulk && sceneBulk.style.display !== 'none') { closeSceneBulk(); return; }
+  // Navigate back from editor / new topic page
+  const hash = window.location.hash.replace('#','') || '/';
+  if (hash.startsWith('/edit/') || hash === '/new') {
+    nav(currentSection === 'verbs' ? '/verbs' : '/');
+    return;
+  }
+  if (hash.startsWith('/scene-edit/') || hash === '/scene-new') {
+    nav('/scenes');
+    return;
+  }
+});
+
+/* ════ PROMPTS ══════════════════════════════════════════════ */
+/* ════ FORMS IMPORT ══════════════════════════════════════════ */
+
+// Prompts for user to copy into Claude/ChatGPT
+const COPY_PROMPTS = {
+  nouns: `Ти — експерт з німецької та української граматики. Для кожного іменника поверни всі відмінкові форми НІМЕЦЬКОЮ і відповідні форми УКРАЇНСЬКОГО перекладу.\nВідповідай ТІЛЬКИ валідним JSON масивом — без пояснень, без markdown, без \`\`\`.\nФормат кожного елемента:\n{\"german\":\"Frau\",\"forms\":{\"nom_sg\":\"die Frau\",\"akk_sg\":\"die Frau\",\"dat_sg\":\"der Frau\",\"gen_sg\":\"der Frau\",\"nom_pl\":\"die Frauen\",\"akk_pl\":\"die Frauen\",\"dat_pl\":\"den Frauen\",\"gen_pl\":\"der Frauen\"},\"ukForms\":{\"nom_sg\":\"Жінка\",\"akk_sg\":\"Жінку\",\"dat_sg\":\"Жінці\",\"gen_sg\":\"Жінки\",\"nom_pl\":\"Жінки\",\"akk_pl\":\"Жінок\",\"dat_pl\":\"Жінкам\",\"gen_pl\":\"Жінок\"}}\nПравила:\n- forms: завжди включай артикль у кожну форму\n- ukForms: правильно відмінюй УКРАІНСЬКИЙ переклад по відмінках (Н/З/Д/Р в однині та множині)\n- Для слів без множини — залиш поля pl порожніми рядками \"\"\n- НЕ додавай жодного тексту поза JSON\n\nСлова:`,
+
+  verbs: `Ти — експерт з німецької та української граматики. Для кожного дієслова згенеруй всі форми відмінювання НІМЕЦЬКОЮ і відповідні форми УКРАЇНСЬКОГО перекладу.\nВідповідай ТІЛЬКИ валідним JSON масивом — без пояснень, без markdown, без \`\`\`.\nФормат кожного елемента:\n{"german":"kaufen","forms":{"pras_ich":"kaufe","pras_du":"kaufst","pras_er":"kauft","pras_wir":"kaufen","pras_ihr":"kauft","pras_sie":"kaufen","prat_ich":"kaufte","prat_du":"kauftest","prat_er":"kaufte","prat_wir":"kauften","prat_ihr":"kauftet","prat_sie":"kauften","fut_ich":"werde kaufen","fut_du":"wirst kaufen","fut_er":"wird kaufen","fut_wir":"werden kaufen","fut_ihr":"werdet kaufen","fut_sie":"werden kaufen","partizip2":"gekauft","hilfsverb":"haben"},"ukForms":{"pras_ich":"купую","pras_du":"купуєш","pras_er":"купує","pras_wir":"купуємо","pras_ihr":"купуєте","pras_sie":"купують","prat_ich":"купував","prat_du":"купував","prat_er":"купував","prat_wir":"купували","prat_ihr":"купували","prat_sie":"купували","fut_ich":"буду купувати","fut_du":"будеш купувати","fut_er":"буде купувати","fut_wir":"будемо купувати","fut_ihr":"будете купувати","fut_sie":"будуть купувати","partizip2":"куплений"}}\nПравила:\n- forms: правильні німецькі форми (для неправильних дієслів — коректний Präteritum)\n- hilfsverb: "haben" або "sein"\n- ukForms: правильний УКРАІНСЬКИЙ переклад для кожної особи і часу (не транслітерація, а нормальний переклад)\n- ukForms.partizip2: пасивний дієприкметник українською (напр. "куплений", "зроблений")\n- НЕ додавай жодного тексту поза JSON\n\nСлова:`,
+};
+
+async function renderPrompts() {
+  currentSection = 'prompts';
+
+  // Load all topics for word lists
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'prompts');
+  let topics = [];
+  try { topics = await apiGet('/api/topics'); } catch {}
+
+  const nouns = topics.filter(t => t.category !== 'verbs');
+  const verbs = topics.filter(t => t.category === 'verbs');
+
+  // Зберігаємо теми глобально для динамічного оновлення селектів
+  window._promptTopics = { nouns, verbs };
+
+  function topicOptions(list) {
+    return list.map((t, i) =>
+      `<option value="${t.id}">${i + 1}. ${escHtml(t.nameUk || t.name)}</option>`
+    ).join('');
+  }
+
+  const initList = _currentPromptType === 'verbs' ? verbs : nouns;
+
+  shell(`
+    <div class="page-header" style="margin-bottom:28px">
+      <div>
+        <div class="page-title">🧩 Форми відмінювання</div>
+        <div class="page-sub">Скопіюй промт → встав слова → отримай JSON → імпортуй</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:24px;max-width:860px">
+
+      <!-- STEP 1: Get prompt -->
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title">1️⃣ Скопіюй промт для нейромережі</div>
+        <div id="prompt-box">
+          <div style="position:relative">
+            <textarea class="input" id="prompt-text" readonly
+              style="height:200px;resize:none;font-family:monospace;font-size:.78rem;line-height:1.5;padding-right:110px"></textarea>
+            <button class="btn btn-primary btn-sm" id="copy-prompt-btn"
+              style="position:absolute;top:10px;right:10px"
+              onclick="copyPrompt()">📋 Копіювати</button>
+          </div>
+          <div style="color:var(--muted);font-size:.82rem;margin-top:8px">
+            👆 Встав цей промт у <strong style="color:var(--text)">Claude.ai</strong> або <strong style="color:var(--text)">ChatGPT</strong>, після тексту промта додай список слів (нижче)
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Get word list -->
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title">2️⃣ Отримай список слів</div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+          <div style="flex:1;min-width:200px">
+            <label>Обери тему</label>
+            <select class="input" id="topic-select" onchange="loadTopicWords()">
+              <option value="">— Вибери тему —</option>
+              ${topicOptions(initList)}
+            </select>
+          </div>
+          <button class="btn btn-ghost" onclick="copyWordList()" id="copy-words-btn" style="display:none">📋 Копіювати слова</button>
+        </div>
+        <textarea class="input" id="words-output" readonly
+          style="height:140px;resize:none;font-family:monospace;font-size:.85rem;display:none"
+          placeholder="Тут з'явиться список слів..."></textarea>
+      </div>
+
+      <!-- STEP 3: Import JSON -->
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title">3️⃣ Встав отриманий JSON</div>
+        <div style="color:var(--muted);font-size:.83rem;margin-bottom:14px;line-height:1.5">
+          Встав сюди відповідь нейромережі (JSON масив з формами). Буде імпортовано в тему обрану вище.
+        </div>
+        <textarea class="input" id="forms-json-input"
+          style="height:180px;resize:vertical;font-family:monospace;font-size:.8rem;line-height:1.5"
+          placeholder='[{"german":"kaufen","forms":{...}},...]'></textarea>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="importForms()">📥 Імпортувати форми</button>
+        </div>
+        <div id="import-result" style="margin-top:12px;font-size:.88rem;min-height:20px"></div>
+      </div>
+
+      <!-- STEP 4: Edit forms per word -->
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>4️⃣ Перегляд та редагування форм</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadTopicForEdit()" title="Оновити">🔄</button>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+          <div style="flex:1;min-width:200px">
+            <label>Тема для редагування</label>
+            <select class="input" id="edit-topic-select" onchange="loadTopicForEdit()">
+              <option value="">— Вибери тему —</option>
+              ${topicOptions(initList)}
+            </select>
+          </div>
+        </div>
+        <div id="forms-editor"></div>
+      </div>
+
+    </div>
+  `, 'prompts');
+
+  // Автоматично показуємо промт для вибраного типу (nouns/verbs через nav dropdown)
+  setTimeout(() => showPromptFor(_currentPromptType), 0);
+}
+
+let _currentPromptType = 'nouns';
+function showPromptFor(type) {
+  _currentPromptType = type;
+  const ta = document.getElementById('prompt-text');
+  if (!ta) return;
+  ta.value = COPY_PROMPTS[type];
+  const btn = document.getElementById('copy-prompt-btn');
+  if (btn) btn.textContent = '📋 Копіювати';
+
+  // Оновлюємо обидва селекти під поточний тип
+  const topics = window._promptTopics;
+  if (!topics) return;
+  const list = type === 'verbs' ? topics.verbs : topics.nouns;
+  const opts = `<option value="">— Вибери тему —</option>` +
+    list.map((t, i) => `<option value="${t.id}">${i + 1}. ${escHtml(t.nameUk || t.name)}</option>`).join('');
+
+  const sel1 = document.getElementById('topic-select');
+  const sel2 = document.getElementById('edit-topic-select');
+  if (sel1) { sel1.innerHTML = opts; }
+  if (sel2) { sel2.innerHTML = opts; }
+
+  // Скидаємо залежні елементи
+  const out = document.getElementById('words-output');
+  const copyBtn = document.getElementById('copy-words-btn');
+  if (out) { out.style.display = 'none'; out.value = ''; }
+  if (copyBtn) copyBtn.style.display = 'none';
+  const editor = document.getElementById('forms-editor');
+  if (editor) editor.innerHTML = '';
+  _editTopicData = null;
+}
+
+function copyPrompt() {
+  const ta = document.getElementById('prompt-text');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).then(() => {
+    document.getElementById('copy-prompt-btn').textContent = '✅ Скопійовано!';
+    setTimeout(() => { const b = document.getElementById('copy-prompt-btn'); if(b) b.textContent = '📋 Копіювати'; }, 2000);
+  });
+}
+
+function loadTopicWords() {
+  const sel = document.getElementById('topic-select');
+  const out = document.getElementById('words-output');
+  const btn = document.getElementById('copy-words-btn');
+  if (!sel || !out) return;
+  const topicId = sel.value;
+  if (!topicId) { out.style.display = 'none'; if(btn) btn.style.display = 'none'; return; }
+
+  // Find topic in already-loaded topics
+  apiGet(`/api/topics/${topicId}`).then(topic => {
+    const isVerbs = topic.category === 'verbs';
+    const words = (topic.words || []).map(w =>
+      isVerbs ? w.german : (w.article ? `${w.article} ${w.german}` : w.german)
+    ).join('\n');
+    out.value = words;
+    out.style.display = 'block';
+    if (btn) btn.style.display = 'inline-flex';
+  }).catch(() => {});
+}
+
+function copyWordList() {
+  const ta = document.getElementById('words-output');
+  if (!ta) return;
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const b = document.getElementById('copy-words-btn');
+    if (b) { b.textContent = '✅ Скопійовано!'; setTimeout(() => { b.textContent = '📋 Копіювати слова'; }, 2000); }
+  });
+}
+
+async function importForms() {
+  const jsonText = document.getElementById('forms-json-input')?.value?.trim();
+  const topicId  = document.getElementById('topic-select')?.value;
+  const resultEl = document.getElementById('import-result');
+  if (!jsonText) { if(resultEl) { resultEl.style.color='var(--red)'; resultEl.textContent='❌ Встав JSON'; } return; }
+
+  let formsArray;
+  try {
+    formsArray = JSON.parse(jsonText.replace(/```json|```/g, '').trim());
+    if (!Array.isArray(formsArray)) throw new Error('not array');
+  } catch {
+    if (resultEl) { resultEl.style.color='var(--red)'; resultEl.textContent='❌ Невалідний JSON — перевір формат'; }
+    return;
+  }
+
+  if (resultEl) { resultEl.style.color='var(--muted)'; resultEl.textContent='⏳ Імпортую…'; }
+
+  // Build map german → { forms, ukForms }
+  const formsMap = {};
+  formsArray.forEach(item => {
+    if (item.german && item.forms) formsMap[item.german.toLowerCase()] = { forms: item.forms, ukForms: item.ukForms || null };
+  });
+
+  try {
+    if (topicId) {
+      // Single topic import
+      const topic = await apiGet(`/api/topics/${topicId}`);
+      const updatedWords = (topic.words || []).map(w => {
+        const matched = formsMap[w.german.toLowerCase()];
+        return { ...w, forms: matched?.forms || w.forms || null, ukForms: matched?.ukForms || w.ukForms || null };
+      });
+      await apiFetch(`/api/topics/${topicId}/forms`, {
+        method: 'POST',
+        body: JSON.stringify({ words: updatedWords }),
+      });
+      const matched = updatedWords.filter(w => w.forms).length;
+      if (resultEl) { resultEl.style.color='var(--green)'; resultEl.textContent=`✅ Імпортовано ${matched} форм у тему "${topic.name}"`; }
+      // Refresh edit panel if same topic is open
+      const editSel = document.getElementById('edit-topic-select');
+      if (editSel && editSel.value === topicId) { _editTopicData = null; loadTopicForEdit(); }
+    } else {
+      // All topics — match by german word
+      const topics = await apiGet('/api/topics');
+      let totalMatched = 0, topicsUpdated = 0;
+      for (const t of topics) {
+        const updatedWords = (t.words || []).map(w => {
+          const matched = formsMap[w.german.toLowerCase()];
+          return { ...w, forms: matched?.forms || w.forms || null, ukForms: matched?.ukForms || w.ukForms || null };
+        });
+        const matched = updatedWords.filter(w => formsMap[w.german.toLowerCase()]).length;
+        if (matched === 0) continue;
+        await apiFetch(`/api/topics/${t.id}/forms`, {
+          method: 'POST',
+          body: JSON.stringify({ words: updatedWords }),
+        });
+        totalMatched += matched;
+        topicsUpdated++;
+      }
+      if (resultEl) { resultEl.style.color='var(--green)'; resultEl.textContent=`✅ Імпортовано ${totalMatched} форм у ${topicsUpdated} темах`; }
+      // Refresh edit panel if a topic is open
+      const editSel2 = document.getElementById('edit-topic-select');
+      if (editSel2 && editSel2.value) { _editTopicData = null; loadTopicForEdit(); }
+    }
+  } catch(e) {
+    if (resultEl) { resultEl.style.color='var(--red)'; resultEl.textContent='❌ Помилка: ' + e.message; }
+  }
+}
+
+// ── Forms editor per word ─────────────────────────────────────
+let _editTopicData = null;
+
+async function loadTopicForEdit() {
+  const topicId = document.getElementById('edit-topic-select')?.value;
+  const container = document.getElementById('forms-editor');
+  if (!container) return;
+  if (!topicId) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `<div class="loader-wrap" style="min-height:80px"><div class="spinner"></div></div>`;
+  try {
+    _editTopicData = await apiGet(`/api/topics/${topicId}?_=${Date.now()}`);
+  } catch { container.innerHTML = '<div style="color:var(--red)">Помилка завантаження</div>'; return; }
+
+  renderFormsEditor();
+}
+
+const NOUN_KEYS  = ['nom_sg','akk_sg','dat_sg','gen_sg','nom_pl','akk_pl','dat_pl','gen_pl'];
+const NOUN_LBLS  = ['Nom.Sg · Наз.одн.','Akk.Sg · Зн.одн.','Dat.Sg · Дав.одн.','Gen.Sg · Род.одн.','Nom.Pl · Наз.мн.','Akk.Pl · Зн.мн.','Dat.Pl · Дав.мн.','Gen.Pl · Род.мн.'];
+const VERB_KEYS  = ['pras_ich','pras_du','pras_er','pras_wir','pras_ihr','pras_sie','prat_ich','prat_du','prat_er','prat_wir','prat_ihr','prat_sie','fut_ich','fut_du','fut_er','fut_wir','fut_ihr','fut_sie','partizip2','hilfsverb'];
+const VERB_LBLS  = ['Präs.ich','Präs.du','Präs.er','Präs.wir','Präs.ihr','Präs.sie','Prät.ich','Prät.du','Prät.er','Prät.wir','Prät.ihr','Prät.sie','Fut.ich','Fut.du','Fut.er','Fut.wir','Fut.ihr','Fut.sie','Partizip II','Hilfsverb'];
+
+function renderFormsEditor() {
+  const container = document.getElementById('forms-editor');
+  if (!container || !_editTopicData) return;
+  const isVerbs = _editTopicData.category === 'verbs';
+  const keys = isVerbs ? VERB_KEYS : NOUN_KEYS;
+  const lbls = isVerbs ? VERB_LBLS : NOUN_LBLS;
+  const words = _editTopicData.words || [];
+
+  const gridCols = isVerbs ? 'repeat(6,1fr)' : 'repeat(4,1fr)';
+
+  container.innerHTML = words.map((w, wi) => {
+    const base = isVerbs ? w.german : (w.article ? `${w.article} ${w.german}` : w.german);
+    const forms   = w.forms   || {};
+    const ukForms = w.ukForms || {};
+    const hasAll = keys.every(k => forms[k]);
+    const ukLabels = ['Називний одн.','Знахідний одн.','Давальний одн.','Родовий одн.','Називний мн.','Знахідний мн.','Давальний мн.','Родовий мн.'];
+    return `
+      <div style="margin-bottom:20px;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)">
+          <div style="font-weight:700;font-size:.95rem">${escHtml(base)} <span style="font-size:.8rem;color:var(--muted);font-weight:400">— ${escHtml(w.ukrainian||'')}</span></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:.75rem;color:${hasAll ? 'var(--green)' : 'var(--muted)'}">
+              ${hasAll ? '✅ всі форми' : `⚠️ ${keys.filter(k=>forms[k]).length}/${keys.length}`}
+            </span>
+            <button class="btn btn-ghost btn-sm" onclick="clearWordForms(${wi})">Очистити</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:${gridCols};gap:8px;padding:14px 16px">
+          ${keys.map((k, ki) => `
+            <div>
+              <label style="font-size:.7rem;margin-bottom:3px">${lbls[ki]}</label>
+              <input class="input" style="padding:6px 8px;font-size:.8rem"
+                value="${escHtml(forms[k]||'')}"
+                onchange="updateWordForm(${wi},'${k}',this.value)"
+                placeholder="${lbls[ki]}" />
+            </div>`).join('')}
+        </div>
+        ${isVerbs ? `
+        <div style="border-top:1px solid var(--border);padding:10px 16px 4px;background:var(--bg-muted,var(--surface))">
+          <div style="font-size:.72rem;font-weight:700;color:var(--cyan);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">🇺🇦 Укр. переклад форм (підказки для гри)</div>
+          <div style="display:grid;grid-template-columns:${gridCols};gap:8px">
+            ${keys.filter(k => k !== 'hilfsverb').map((k, ki) => {
+              const ukVerbLbls = ['Präs.ich','Präs.du','Präs.er','Präs.wir','Präs.ihr','Präs.sie','Prät.ich','Prät.du','Prät.er','Prät.wir','Prät.ihr','Prät.sie','Fut.ich','Fut.du','Fut.er','Fut.wir','Fut.ihr','Fut.sie','Partizip II'];
+              return `
+              <div>
+                <label style="font-size:.7rem;margin-bottom:3px;color:var(--cyan)">${ukVerbLbls[ki]}</label>
+                <input class="input" style="padding:6px 8px;font-size:.8rem;border-color:var(--border2)"
+                  value="${escHtml(ukForms[k]||'')}"
+                  onchange="updateWordUkForm(${wi},'${k}',this.value)"
+                  placeholder="${ukVerbLbls[ki]}" />
+              </div>`;
+            }).join('')}
+          </div>
+        </div>` : `
+        <div style="border-top:1px solid var(--border);padding:10px 16px 4px;background:var(--bg-muted,var(--surface))">
+          <div style="font-size:.72rem;font-weight:700;color:var(--cyan);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">🇺🇦 Укр. відмінки (підказки для гри)</div>
+          <div style="display:grid;grid-template-columns:${gridCols};gap:8px">
+            ${keys.map((k, ki) => `
+              <div>
+                <label style="font-size:.7rem;margin-bottom:3px;color:var(--cyan)">${ukLabels[ki]}</label>
+                <input class="input" style="padding:6px 8px;font-size:.8rem;border-color:var(--border2)"
+                  value="${escHtml(ukForms[k]||'')}"
+                  onchange="updateWordUkForm(${wi},'${k}',this.value)"
+                  placeholder="${ukLabels[ki]}" />
+              </div>`).join('')}
+          </div>
+        </div>`}
+      </div>`;
+  }).join('') + `
+    <div style="display:flex;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-primary" onclick="saveEditedForms()" id="save-forms-edit-btn">💾 Зберегти форми</button>
+    </div>
+    <div id="save-forms-msg" style="text-align:right;font-size:.85rem;margin-top:8px;min-height:18px"></div>`;
+}
+
+function updateWordForm(wi, key, val) {
+  if (!_editTopicData?.words?.[wi]) return;
+  if (!_editTopicData.words[wi].forms) _editTopicData.words[wi].forms = {};
+  _editTopicData.words[wi].forms[key] = val;
+}
+
+function updateWordUkForm(wi, key, val) {
+  if (!_editTopicData?.words?.[wi]) return;
+  if (!_editTopicData.words[wi].ukForms) _editTopicData.words[wi].ukForms = {};
+  _editTopicData.words[wi].ukForms[key] = val;
+}
+
+function clearWordForms(wi) {
+  if (!_editTopicData?.words?.[wi]) return;
+  _editTopicData.words[wi].forms = {};
+  _editTopicData.words[wi].ukForms = {};
+  renderFormsEditor();
+}
+
+async function saveEditedForms() {
+  if (!_editTopicData) return;
+  const btn = document.getElementById('save-forms-edit-btn');
+  const msg = document.getElementById('save-forms-msg');
+  if (btn) { btn.disabled = true; btn.textContent = 'Збереження…'; }
+  try {
+    await apiFetch(`/api/topics/${_editTopicData.id}/forms`, {
+      method: 'POST',
+      body: JSON.stringify({ words: _editTopicData.words }),
+    });
+    if (msg) { msg.style.color='var(--green)'; msg.textContent='✅ Форми збережено'; }
+  } catch(e) {
+    if (msg) { msg.style.color='var(--red)'; msg.textContent='❌ Помилка: ' + e.message; }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Зберегти форми'; }
+}
+
+function toggleGrammarDropdown(e) {
+  e.stopPropagation();
+  ['grammar-dropdown', 'grammar-dropdown-mobile'].forEach(id => {
+    const dd = document.getElementById(id);
+    if (dd) dd.classList.toggle('open');
+  });
+}
+function closeGrammarDropdown() {
+  document.getElementById('grammar-dropdown')?.classList.remove('open');
+  document.getElementById('grammar-dropdown-mobile')?.classList.remove('open');
+}
+document.addEventListener('click', () => closeGrammarDropdown());
+
+async function init() {
+  if (adminToken) {
+    try {
+      const r = await fetch(`${BACKEND_URL}/api/admin/verify`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: adminToken }),
+      });
+      const { valid } = await r.json();
+      if (!valid) { adminToken = null; sessionStorage.removeItem('adminToken'); }
+    } catch { adminToken = null; sessionStorage.removeItem('adminToken'); }
+  }
+  // [FIX] hashchange listener вже зареєстровано глобально (рядок вище) — тут дублікат видалено
+  if (adminToken) startOnlinePolling();
+  route();
+}
+
+init();
+
+/* ════ SETTINGS ═════════════════════════════════════════════ */
+let settingsData = null;
+
+async function renderSettings() {
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'settings');
+  try {
+    settingsData = await apiGet('/api/bot-difficulty');
+  } catch {
+    settingsData = {
+      difficulty: 2,
+      botWaitTime: 28000,
+      botSettings: {
+        1: { minMs: 4000, maxMs: 9000,  accuracy: 0.45 },
+        2: { minMs: 2000, maxMs: 6000,  accuracy: 0.70 },
+        3: { minMs: 800,  maxMs: 3000,  accuracy: 0.92 },
+      }
+    };
+  }
+
+  const d = settingsData.difficulty;
+  const wt = Math.round((settingsData.botWaitTime ?? 28000) / 1000);
+  const bs = settingsData.botSettings ?? {};
+
+  function levelBlock(val, emoji, label) {
+    const s = bs[val] || {};
+    const minS  = Math.round((s.minMs  ?? 0) / 1000);
+    const maxS  = Math.round((s.maxMs  ?? 0) / 1000);
+    const accPct = Math.round((s.accuracy ?? 0) * 100);
+    const isActive = d === val;
+    return `
+      <div style="
+        background:var(--surface);border:2px solid ${isActive ? 'var(--primary)' : 'var(--border2)'};
+        border-radius:var(--r-lg);padding:20px;transition:border-color .2s;
+        " id="level-block-${val}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <input type="radio" name="difficulty" value="${val}" ${isActive ? 'checked' : ''}
+            onchange="highlightLevel()"
+            style="accent-color:var(--primary);width:16px;height:16px;flex-shrink:0" />
+          <span style="font-weight:700;font-size:1rem">${emoji} ${label}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:.78rem">Мін. час відповіді (с)</label>
+            <input class="input" type="number" min="0.5" max="30" step="0.5"
+              id="bs-${val}-min" value="${minS}" style="padding:8px 10px;font-size:.9rem" />
+          </div>
+          <div>
+            <label style="font-size:.78rem">Макс. час відповіді (с)</label>
+            <input class="input" type="number" min="1" max="30" step="0.5"
+              id="bs-${val}-max" value="${maxS}" style="padding:8px 10px;font-size:.9rem" />
+          </div>
+          <div>
+            <label style="font-size:.78rem">Точність відповідей (%)</label>
+            <input class="input" type="number" min="0" max="100" step="1"
+              id="bs-${val}-acc" value="${accPct}" style="padding:8px 10px;font-size:.9rem" />
+          </div>
+        </div>
+      </div>`;
+  }
+
+  shell(`
+    <div class="page-header" style="margin-bottom:32px">
+      <div>
+        <div class="page-title">⚙️ Налаштування</div>
+        <div class="page-sub">Глобальні параметри гри для всіх гравців</div>
+      </div>
+    </div>
+
+    <div style="max-width:600px;display:flex;flex-direction:column;gap:20px">
+
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title">⏱ Час очікування бота</div>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:16px;line-height:1.5">
+          Якщо за цей час не знаходиться живий суперник — автоматично підключається бот.
+        </p>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input class="input" type="number" min="5" max="300" step="1"
+            id="bot-wait-time" value="${wt}"
+            style="max-width:120px;font-size:1rem;padding:10px 14px" />
+          <span style="color:var(--muted);font-size:.9rem">секунд</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:28px">
+        <div class="editor-section-title">🤖 Складність бота</div>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:20px;line-height:1.5">
+          Вибери активний рівень та налаштуй параметри кожного. Гравець не знає що грає проти бота.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${levelBlock(1, '😴', 'Легкий')}
+          ${levelBlock(2, '😐', 'Середній')}
+          ${levelBlock(3, '😤', 'Важкий')}
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" style="width:100%" onclick="saveSettings()" id="save-settings-btn">
+        💾 Зберегти всі налаштування
+      </button>
+      <div id="save-settings-msg" style="text-align:center;font-size:.88rem;min-height:20px"></div>
+
+    </div>
+  `, 'settings');
+}
+
+function highlightLevel() {
+  [1,2,3].forEach(val => {
+    const radio = document.querySelector(`[name="difficulty"][value="${val}"]`);
+    const block = document.getElementById(`level-block-${val}`);
+    if (block && radio) block.style.borderColor = radio.checked ? 'var(--primary)' : 'var(--border2)';
+  });
+}
+
+async function saveSettings() {
+  const selected = document.querySelector('[name="difficulty"]:checked');
+  if (!selected) return;
+
+  const waitSec = parseFloat(document.getElementById('bot-wait-time')?.value) || 28;
+
+  const botSettings = {};
+  [1,2,3].forEach(val => {
+    const minS = parseFloat(document.getElementById(`bs-${val}-min`)?.value) || 1;
+    const maxS = parseFloat(document.getElementById(`bs-${val}-max`)?.value) || 5;
+    // [FIX] Раніше: parseFloat(val) / 100 || 0.7 — якщо acc=0, виходило 0.7 (0 falsy).
+    // Тепер явна перевірка isNaN.
+    const accRaw = parseFloat(document.getElementById(`bs-${val}-acc`)?.value);
+    const acc = isNaN(accRaw) ? 0.7 : accRaw / 100;
+    botSettings[val] = {
+      minMs: Math.round(minS * 1000),
+      maxMs: Math.round(maxS * 1000),
+      accuracy: Math.min(1, Math.max(0, acc)),
+    };
+  });
+
+  const btn = document.getElementById('save-settings-btn');
+  const msg = document.getElementById('save-settings-msg');
+  btn.disabled = true;
+  btn.textContent = 'Збереження…';
+
+  try {
+    await apiFetch('/api/bot-difficulty', {
+      method: 'POST',
+      body: JSON.stringify({
+        difficulty: Number(selected.value),
+        botWaitTime: Math.round(waitSec * 1000),
+        botSettings,
+      })
+    });
+    msg.style.color = 'var(--green)';
+    msg.textContent = '✅ Збережено! Застосується до нових ігор.';
+  } catch {
+    msg.style.color = 'var(--red)';
+    msg.textContent = '❌ Помилка збереження';
+  }
+  btn.disabled = false;
+  btn.textContent = '💾 Зберегти всі налаштування';
+}
+</script>
+</body>
+</html>
