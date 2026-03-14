@@ -1252,13 +1252,7 @@
   // Auto-detects origin — works for localhost, LAN IPs (192.168/172.16/10.x), and production HTTPS.
   // On localhost or private-network IPs, appends :3001 (dev backend port).
   // In production the backend runs on the same host/port as the frontend.
-  const BACKEND_URL = (() => {
-    const { protocol, hostname } = window.location;
-    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
-    const isLan   = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname);
-    const port = (isLocal || isLan) ? ':3001' : '';
-    return `${protocol}//${hostname}${port}`;
-  })();
+  const BACKEND_URL = 'https://herrin.onrender.com';
 
   // Prevent browser from restoring scroll position on hash navigation
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
