@@ -1234,6 +1234,17 @@
     </style>
   </head>
   <body>
+  <script>
+    (function() {
+      var ua = navigator.userAgent || '';
+      var isTelegram = /telegram/i.test(ua) || !!window.TelegramWebviewProxy;
+      if (isTelegram) {
+        document.addEventListener('DOMContentLoaded', function() {
+          document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;text-align:center;padding:20px;background:#07071a;color:#e8e8f8"><h2 style="font-size:22px;margin-bottom:12px">Відкрийте в браузері</h2><p style="color:#8888bb;margin-bottom:24px">Сайт не підтримує вбудований браузер Telegram</p><a href="' + window.location.href + '" target="_blank" style="background:#6366f1;color:white;padding:14px 28px;border-radius:12px;text-decoration:none;font-size:16px;font-weight:600">Відкрити в браузері</a></div>';
+        });
+      }
+    })();
+  </script>
   <div id="invite-popup-overlay" class="invite-popup-overlay" style="display:none"></div>
   <!-- Mobile menu overlay + dialog (outside nav so position:fixed works correctly) -->
   <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
