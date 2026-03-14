@@ -990,29 +990,9 @@ async function renderEditor(id, defaultCategory = 'nouns') {
         <label>Опис (необов'язково)</label>
         <input class="input" id="topic-desc" value="${escHtml(topic.description || '')}" placeholder="Короткий опис теми…" />
       </div>
-      <div class="form-group">
-        <label>Категорія</label>
-        <div style="display:flex;gap:10px;margin-top:4px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;font-weight:500;color:var(--text);
-            background:var(--surface);border:2px solid ${cat === 'nouns' ? 'var(--primary)' : 'var(--border2)'};
-            border-radius:var(--r);padding:10px 16px;flex:1;transition:border-color .2s" id="cat-nouns-label">
-            <input type="radio" name="topic-category" value="nouns" ${cat === 'nouns' ? 'checked' : ''}
-              onchange="updateCatLabel()" style="accent-color:var(--primary);width:15px;height:15px" />
-            📝 Іменники
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;font-weight:500;color:var(--text);
-            background:var(--surface);border:2px solid ${cat === 'verbs' ? 'var(--cyan)' : 'var(--border2)'};
-            border-radius:var(--r);padding:10px 16px;flex:1;transition:border-color .2s" id="cat-verbs-label">
-            <input type="radio" name="topic-category" value="verbs" ${cat === 'verbs' ? 'checked' : ''}
-              onchange="updateCatLabel()" style="accent-color:var(--cyan);width:15px;height:15px" />
-            🔤 Дієслова
-          </label>
-        </div>
-      </div>
     </div>
     <div class="card" style="padding:28px;margin-bottom:24px">
-      <div class="editor-section-title">
-        📖 Слова
+      <input type="hidden" id="topic-category-hidden" value="${cat}" />
         <span style="font-size:.8rem;color:var(--muted);font-weight:400" id="words-count-label"></span>
       </div>
       <div class="words-header">
@@ -1021,7 +1001,7 @@ async function renderEditor(id, defaultCategory = 'nouns') {
       <div id="words-list"></div>
       <div style="margin-top:12px">
         <button class="btn btn-ghost" onclick="addWord()">+ Додати слово</button>
-        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="addMultiple()">📋 Вставити список</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="openAutoGenerate()">🤖 Автогенерація</button>
       </div>
     </div>
     <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
@@ -1042,6 +1022,27 @@ async function renderEditor(id, defaultCategory = 'nouns') {
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
           <button class="btn btn-ghost" onclick="closeBulk()">Скасувати</button>
           <button class="btn btn-primary" onclick="parseBulk()">Додати слова</button>
+        </div>
+      </div>
+    </div>
+    <div id="autogen-modal" style="display:none;position:fixed;inset:0;background:#000a;z-index:200;align-items:center;justify-content:center;padding:20px">
+      <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r-lg);padding:28px;width:100%;max-width:520px">
+        <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:700;margin-bottom:16px">🤖 Автогенерація слів</div>
+        <div style="color:var(--muted);font-size:.83rem;margin-bottom:16px;line-height:1.5">
+          AI згенерує слова для теми, verbformen.de перевірить переклади.
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px">
+          <div style="flex:1">
+            <label style="font-size:.82rem;color:var(--muted);display:block;margin-bottom:4px">Кількість слів</label>
+            <input class="input" id="autogen-count" type="number" min="1" max="50" value="15" style="width:100%" />
+          </div>
+        </div>
+        <div id="autogen-status" style="min-height:20px;font-size:.85rem;color:var(--muted);margin-bottom:12px"></div>
+        <div id="autogen-preview" style="display:none;max-height:260px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--border);border-radius:var(--r);padding:10px;font-size:.83rem;font-family:monospace;line-height:1.8"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="closeAutoGenerate()" id="autogen-cancel-btn">Скасувати</button>
+          <button class="btn btn-primary" onclick="runAutoGenerate()" id="autogen-run-btn">▶ Генерувати</button>
+          <button class="btn btn-primary" onclick="applyAutoGenerate()" id="autogen-apply-btn" style="display:none">✅ Додати слова</button>
         </div>
       </div>
     </div>`, currentSection);
@@ -1214,6 +1215,88 @@ function parseBulk() {
   if (added) toast(`✅ Додано ${added} слів`, 'success');
 }
 
+let _autogenWords = [];
+function openAutoGenerate() {
+  const nameUk = document.getElementById('topic-name-uk')?.value.trim();
+  if (!nameUk) { toast('❌ Спочатку введіть назву теми (укр.)', 'error'); return; }
+  _autogenWords = [];
+  const modal = document.getElementById('autogen-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('autogen-status').textContent = '';
+    document.getElementById('autogen-preview').style.display = 'none';
+    document.getElementById('autogen-preview').innerHTML = '';
+    document.getElementById('autogen-run-btn').style.display = '';
+    document.getElementById('autogen-apply-btn').style.display = 'none';
+    document.getElementById('autogen-run-btn').disabled = false;
+    document.getElementById('autogen-run-btn').textContent = '▶ Генерувати';
+  }
+}
+function closeAutoGenerate() {
+  const modal = document.getElementById('autogen-modal');
+  if (modal) modal.style.display = 'none';
+}
+async function runAutoGenerate() {
+  const nameUk = document.getElementById('topic-name-uk')?.value.trim();
+  const nameDe = document.getElementById('topic-name')?.value.trim();
+  const count = parseInt(document.getElementById('autogen-count')?.value) || 15;
+  const category = document.getElementById('topic-category-hidden')?.value || (currentSection === 'verbs' ? 'verbs' : 'nouns');
+
+  const statusEl = document.getElementById('autogen-status');
+  const previewEl = document.getElementById('autogen-preview');
+  const runBtn = document.getElementById('autogen-run-btn');
+  const applyBtn = document.getElementById('autogen-apply-btn');
+
+  runBtn.disabled = true;
+  runBtn.textContent = '⏳ Генерую...';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = `⏳ AI генерує ${count} слів, потім verbformen.de перевіряє... (~${Math.ceil(count * 0.4)}с)`;
+  previewEl.style.display = 'none';
+
+  try {
+    const existingWords = editorWords.map(w => ({ german: w.german }));
+    const r = await apiFetch('/api/generate-words', {
+      method: 'POST',
+      body: JSON.stringify({ topicNameUk: nameUk, topicNameDe: nameDe, category, count, existingWords }),
+    });
+    const data = await r.json();
+    if (!data.success) throw new Error(data.error || 'Помилка');
+
+    _autogenWords = data.words;
+    const fromVerbformen = data.words.filter(w => w.source === 'verbformen').length;
+    const fromAi = data.words.filter(w => w.source === 'ai').length;
+
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✅ Згенеровано ${data.words.length} слів (verbformen.de: ${fromVerbformen} ✓, AI: ${fromAi} ⚠️)`;
+
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = data.words.map(w => {
+      const src = w.source === 'verbformen'
+        ? '<span style="color:var(--green)">✓</span>'
+        : '<span style="color:var(--gold)">⚠️</span>';
+      const art = w.article ? `<span style="color:var(--muted)">${w.article}</span> ` : '';
+      return `${src} ${art}<b>${w.german}</b> — ${w.ukrainian}`;
+    }).join('<br>');
+
+    runBtn.style.display = 'none';
+    applyBtn.style.display = '';
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '❌ Помилка: ' + e.message;
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Генерувати';
+  }
+}
+function applyAutoGenerate() {
+  for (const w of _autogenWords) {
+    editorWords.push({ article: w.article || '', german: w.german, ukrainian: w.ukrainian, _id: Date.now() + Math.random() });
+  }
+  closeAutoGenerate();
+  renderWordsList();
+  toast(`✅ Додано ${_autogenWords.length} слів`, 'success');
+  _autogenWords = [];
+}
+
 async function saveTopic() {
   const name   = document.getElementById('topic-name')?.value.trim();
   const nameUk = document.getElementById('topic-name-uk')?.value.trim();
@@ -1229,7 +1312,7 @@ async function saveTopic() {
   if (words.length < 2) { toast('❌ Додайте мінімум 2 слова', 'error'); return; }
   const btn = document.getElementById('save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Зберігаємо…'; }
-  const category = document.querySelector('[name="topic-category"]:checked')?.value || 'nouns';
+  const category = document.getElementById('topic-category-hidden')?.value || (currentSection === 'verbs' ? 'verbs' : 'nouns');
   const body = { name, nameUk, description: desc, category, words, emoji: emoji === '🏷️' ? '' : emoji };
   const method = editingId ? 'PUT' : 'POST';
   const endpoint = editingId ? `/api/topics/${editingId}` : '/api/topics';
