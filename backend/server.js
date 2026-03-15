@@ -1332,7 +1332,7 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
       if (source === 'wiktionary') updated.article = updated.article || w.article;
       updatedWords.push(updated);
       results.push({ german: germanWord, ukrainian, source, hasForms: !!forms, hasUkForms: !!ukForms });
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 2500)); // ~24 req/min, stays under Groq 30 RPM limit
     }
 
     await db.collection('topics').doc(topicId).update({
