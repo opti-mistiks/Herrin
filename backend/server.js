@@ -102,9 +102,10 @@ app.get('/api/config', (req, res) => {
 // [OPT] Винесено повторну логіку map слів в окрему функцію
 function sanitizeTopicWords(words) {
   return words.map(w => {
+    const uk = (w.ukrainian || '').trim();
     const clean = {
       german:    (w.german    || '').trim(),
-      ukrainian: (w.ukrainian || '').trim(),
+      ukrainian: uk ? uk.charAt(0).toUpperCase() + uk.slice(1) : uk,
       article:   (w.article   || '').trim(),
     };
     if (w.forms    && typeof w.forms    === 'object') clean.forms    = w.forms;
@@ -680,7 +681,7 @@ async function warmTtsForWords(words = []) {
     try {
       const buf = await fetchFromGoogle(text);
       ttsCache.set(key, buf);
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 1500));
     } catch (e) {
       console.warn(`TTS warmup failed: "${text}" —`, e.message);
     }
@@ -757,43 +758,40 @@ app.get('/api/tts', async (req, res) => {
 
 // ── AI Prompts (admin read/write) ─────────────────────────────────────────
 const DEFAULT_PROMPTS = {
-  nouns: `Ти — експерт з німецької та української граматики. Для кожного іменника поверни всі відмінкові форми НІМЕЦЬКОЮ і відповідні форми УКРАЇНСЬКОГО перекладу.
-Відповідай ТІЛЬКИ валідним JSON масивом, без пояснень, без markdown.
-Формат кожного елемента:
-{
-  "german": "Frau",
-  "forms": {
-    "nom_sg": "die Frau", "akk_sg": "die Frau", "dat_sg": "der Frau", "gen_sg": "der Frau",
-    "nom_pl": "die Frauen", "akk_pl": "die Frauen", "dat_pl": "den Frauen", "gen_pl": "der Frauen"
-  },
-  "ukForms": {
-    "nom_sg": "Жінка", "akk_sg": "Жінку", "dat_sg": "Жінці", "gen_sg": "Жінки",
-    "nom_pl": "Жінки", "akk_pl": "Жінок", "dat_pl": "Жінкам", "gen_pl": "Жінок"
-  }
-}
-Правила:
-- forms: завжди включай артикль у кожну форму
-- ukForms: правильно відмінюй УКРАІНСЬКИЙ переклад слова по відмінках (Н/З/Д/Р в однині та множині)
-- Для слів що не мають множини — залиш поля pl порожніми рядками ""
-- НЕ додавай жодного тексту поза JSON`,
+  nouns: `Ти — експерт з німецької та української граматики. Для кожного іменника поверни точні відмінкові форми.
+Відповідай ТІЛЬКИ валідним JSON масивом — без пояснень, без markdown, без \`\`\`.
 
-  verbs: `Ти — експерт з німецької граматики. Для кожного дієслова поверни всі відмінювання.
-Відповідай ТІЛЬКИ валідним JSON масивом, без пояснень, без markdown.
 Формат кожного елемента:
-{
-  "german": "kaufen",
-  "forms": {
-    "pras_ich": "kaufe", "pras_du": "kaufst", "pras_er": "kauft", "pras_wir": "kaufen", "pras_ihr": "kauft", "pras_sie": "kaufen",
-    "prat_ich": "kaufte", "prat_du": "kauftest", "prat_er": "kaufte", "prat_wir": "kauften", "prat_ihr": "kauftet", "prat_sie": "kauften",
-    "fut_ich": "werde kaufen", "fut_du": "wirst kaufen", "fut_er": "wird kaufen", "fut_wir": "werden kaufen", "fut_ihr": "werdet kaufen", "fut_sie": "werden kaufen",
-    "partizip2": "gekauft",
-    "hilfsverb": "haben"
-  }
-}
+{"german":"Frau","forms":{"nom_sg":"die Frau","akk_sg":"die Frau","dat_sg":"der Frau","gen_sg":"der Frau","nom_pl":"die Frauen","akk_pl":"die Frauen","dat_pl":"den Frauen","gen_pl":"der Frauen"},"ukForms":{"nom_sg":"Жінка","akk_sg":"Жінку","dat_sg":"Жінці","gen_sg":"Жінки","nom_pl":"Жінки","akk_pl":"Жінок","dat_pl":"Жінкам","gen_pl":"Жінок"}}
+
 Правила:
-- Для неправильних дієслів використовуй коректні форми Präteritum (не додавай -te)
-- hilfsverb: "haben" або "sein"
-- НЕ додавай жодного тексту поза JSON`,
+- forms: ЗАВЖДИ включай правильний артикль у кожну форму (der/die/das/den/dem/des)
+- forms: для слів без множини — поля nom_pl, akk_pl, dat_pl, gen_pl залиш порожніми рядками ""
+- forms: для слів тільки у множині — поля nom_sg, akk_sg, dat_sg, gen_sg залиш порожніми рядками ""
+- ukForms: правильно відмінюй УКРАЇНСЬКЕ слово (Називний/Знахідний/Давальний/Родовий в однині та множині)
+- ukForms: якщо немає множини — поля pl залиш порожніми рядками ""
+- Для неправильних іменників (das Herz, der Name тощо) — використовуй точні форми
+- НЕ додавай жодного тексту поза JSON масивом
+
+Слова:`,
+
+  verbs: `Ти — експерт з німецької граматики. Для кожного дієслова поверни точні форми відмінювання.
+Відповідай ТІЛЬКИ валідним JSON масивом — без пояснень, без markdown, без \`\`\`.
+
+Формат кожного елемента:
+{"german":"kaufen","forms":{"pras_ich":"kaufe","pras_du":"kaufst","pras_er":"kauft","pras_wir":"kaufen","pras_ihr":"kauft","pras_sie":"kaufen","prat_ich":"kaufte","prat_du":"kauftest","prat_er":"kaufte","prat_wir":"kauften","prat_ihr":"kauftet","prat_sie":"kauften","fut_ich":"werde kaufen","fut_du":"wirst kaufen","fut_er":"wird kaufen","fut_wir":"werden kaufen","fut_ihr":"werdet kaufen","fut_sie":"werden kaufen","partizip2":"gekauft","hilfsverb":"haben"},"ukForms":{"pras_ich":"купую","pras_du":"купуєш","pras_er":"купує","pras_wir":"купуємо","pras_ihr":"купуєте","pras_sie":"купують","prat_ich":"купував","prat_du":"купував","prat_er":"купував","prat_wir":"купували","prat_ihr":"купували","prat_sie":"купували","fut_ich":"буду купувати","fut_du":"будеш купувати","fut_er":"буде купувати","fut_wir":"будемо купувати","fut_ihr":"будете купувати","fut_sie":"будуть купувати","partizip2":"куплений"}}
+
+Правила:
+- pras: Präsens — для неправильних дієслів обов'язково зміни корінь (fahren→fährt, laufen→läuft, sein→bin/bist/ist тощо)
+- prat: Präteritum — для неправильних дієслів використовуй ТОЧНИЙ сильний Präteritum (gehen→ging, fahren→fuhr, sein→war)
+- fut: Futur I — werde/wirst/wird/werden/werdet/werden + інфінітив
+- partizip2: точний Partizip II (з ge- або без, з haben/sein)
+- hilfsverb: "haben" або "sein" (sein для дієслів руху та зміни стану)
+- ukForms.prat: минулий час українською з чоловічим родом (купував, йшов, був)
+- ukForms.partizip2: пасивний дієприкметник (куплений, зроблений) або форма перфекта (пішов, прийшов)
+- НЕ додавай жодного тексту поза JSON масивом
+
+Слова:`,
 };
 
 app.get('/api/prompts', requireAdmin, async (req, res) => {
@@ -923,6 +921,81 @@ app.post('/api/topics/:id/forms', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Wiktionary helpers ─────────────────────────────────────────────────────
+async function fetchWiktionary(word) {
+  const url = 'https://de.wiktionary.org/w/api.php?action=query&titles=' + encodeURIComponent(word) + '&prop=revisions&rvprop=content&format=json&formatversion=2';
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Herrin-LearningApp/1.0 (educational)' },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  const page = data && data.query && data.query.pages && data.query.pages[0];
+  if (!page || page.missing) return null;
+  return (page.revisions && page.revisions[0] && page.revisions[0].content) || null;
+}
+
+// Parse a wikitext template block line by line — more reliable than regex
+function getWikiField(block, key) {
+  const lines = block.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('|')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx === -1) continue;
+    const fieldName = trimmed.slice(1, eqIdx).trim();
+    if (fieldName === key) {
+      const val = trimmed.slice(eqIdx + 1).trim();
+      // Strip wiki markup: <tags>, [[links|display]], ''bold''
+      return val
+        .replace(/<[^>]+>/g, '')
+        .replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1')
+        .replace(/'{2,}/g, '')
+        .trim() || null;
+    }
+  }
+  return null;
+}
+
+function parseWiktionaryArticle(wikitext) {
+  const m = wikitext.match(/\{\{Deutsch Substantiv Übersicht([\s\S]*?)\}\}/);
+  if (!m) return null;
+  const block = m[1];
+  const g = getWikiField(block, 'Genus') || getWikiField(block, 'Genus 1');
+  const articleMap = { m: 'der', f: 'die', n: 'das', Maskulinum: 'der', Femininum: 'die', Neutrum: 'das' };
+  return {
+    article: articleMap[g] || null,
+    nom_sg:  getWikiField(block, 'Nominativ Singular')  || getWikiField(block, 'Nominativ Singular 1'),
+    nom_pl:  getWikiField(block, 'Nominativ Plural')    || getWikiField(block, 'Nominativ Plural 1'),
+    gen_sg:  getWikiField(block, 'Genitiv Singular')    || getWikiField(block, 'Genitiv Singular 1'),
+    gen_pl:  getWikiField(block, 'Genitiv Plural')      || getWikiField(block, 'Genitiv Plural 1'),
+    dat_sg:  getWikiField(block, 'Dativ Singular')      || getWikiField(block, 'Dativ Singular 1'),
+    dat_pl:  getWikiField(block, 'Dativ Plural')        || getWikiField(block, 'Dativ Plural 1'),
+    akk_sg:  getWikiField(block, 'Akkusativ Singular')  || getWikiField(block, 'Akkusativ Singular 1'),
+    akk_pl:  getWikiField(block, 'Akkusativ Plural')    || getWikiField(block, 'Akkusativ Plural 1'),
+  };
+}
+
+function parseWiktionaryVerb(wikitext) {
+  const m = wikitext.match(/\{\{Deutsch Verb Übersicht([\s\S]*?)\}\}/);
+  if (!m) return null;
+  const block = m[1];
+  const pras_ich = getWikiField(block, 'Präsens_ich');
+  const pras_wir = getWikiField(block, 'Präsens_wir') || (pras_ich ? pras_ich.replace(/e$/, 'en') : null);
+  const hilfs = getWikiField(block, 'Hilfsverb') || '';
+  return {
+    pras_ich,
+    pras_du:   getWikiField(block, 'Präsens_du'),
+    pras_er:   getWikiField(block, 'Präsens_er'),
+    pras_wir,
+    pras_ihr:  getWikiField(block, 'Präsens_ihr'),
+    pras_sie:  getWikiField(block, 'Präsens_sie') || pras_wir,
+    prat_ich:  getWikiField(block, 'Präteritum_ich'),
+    partizip2: getWikiField(block, 'Partizip II'),
+    hilfsverb: hilfs.includes('sein') ? 'sein' : 'haben',
+  };
+}
+
 // ── Auto-generate words for topic ─────────────────────────────────────────
 app.post('/api/generate-words', requireAdmin, async (req, res) => {
   const { topicNameUk, topicNameDe, category, count, existingWords } = req.body;
@@ -933,219 +1006,351 @@ app.post('/api/generate-words', requireAdmin, async (req, res) => {
 
   const isVerbs = category === 'verbs';
   const n = Math.min(Math.max(parseInt(count) || 15, 1), 50);
-  const existingGerman = (existingWords || []).map(w => w.german?.toLowerCase()).filter(Boolean);
 
   try {
-    // Step 1: Groq generates words
-    const prompt = isVerbs
-      ? `Ти — експерт з німецької мови. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${n} різних дієслів.
-Вже існують в базі: ${existingGerman.length ? existingGerman.join(', ') : 'немає'} — НЕ повторюй їх.
-Відповідай ТІЛЬКИ валідним JSON масивом без пояснень:
-[{"german":"gehen","ukrainian":"йти"},...]
-Правила: тільки інфінітив, тільки реальні слова, без дублікатів.`
-      : `Ти — експерт з німецької мови. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${n} різних іменників.
-Вже існують в базі: ${existingGerman.length ? existingGerman.join(', ') : 'немає'} — НЕ повторюй їх.
-Відповідай ТІЛЬКИ валідним JSON масивом без пояснень:
-[{"article":"die","german":"Mutter","ukrainian":"мати"},...]
-Правила: правильний артикль (der/die/das), тільки реальні слова, без дублікатів.`;
+    // Load ALL existing words from DB for dedup; pass only similar-topic words to AI prompt
+    const allTopicsSnap = await db.collection('topics').get();
+    const allExistingGerman = new Set();
+    const allExistingUkrainian = new Set();
+    const topicNameLower = (topicNameUk + ' ' + (topicNameDe || '')).toLowerCase();
+    const similarWordsGerman = new Set();
+    allTopicsSnap.docs.forEach(doc => {
+      const d = doc.data();
+      const docName = ((d.name || '') + ' ' + (d.nameUk || '')).toLowerCase();
+      const isSimilar = topicNameLower.split(/\s+/).some(w => w.length > 3 && docName.includes(w))
+                     || docName.split(/\s+/).some(w => w.length > 3 && topicNameLower.includes(w));
+      (d.words || []).forEach(w => {
+        if (w.german)    allExistingGerman.add(w.german.toLowerCase());
+        if (w.ukrainian) allExistingUkrainian.add(w.ukrainian.toLowerCase());
+        if (isSimilar && w.german) similarWordsGerman.add(w.german.toLowerCase());
+      });
+    });
+    (existingWords || []).forEach(w => {
+      if (w.german)    { allExistingGerman.add(w.german.toLowerCase()); similarWordsGerman.add(w.german.toLowerCase()); }
+      if (w.ukrainian) allExistingUkrainian.add(w.ukrainian.toLowerCase());
+    });
+    const existingList = similarWordsGerman.size > 0
+      ? [...similarWordsGerman].join(', ')
+      : [...allExistingGerman].slice(0, 100).join(', ') || 'немає';
 
+    // Step 1: Groq generates {ukrainian, german, article} — 4x buffer so dedup still leaves enough
+    const bufferN = Math.min(n * 4, 80);
+    const prompt = isVerbs
+      ? `Ти — вчитель німецької мови для початківців. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${bufferN} простих дієслів рівня A1-B1.
+КРИТИЧНО: ukrainian і german — ТОЧНІ переклади одне одного. Якщо перекласти german назад — має вийти саме ukrainian.
+МОВА: ukrainian — тільки ЛІТЕРАТУРНА УКРАЇНСЬКА, не російська, не суржик.
+Використовуй тільки найбільш вживане стандартне слово, не складні композити.
+Ці слова вже є в словнику — НЕ включай: ${existingList}
+Відповідай ТІЛЬКИ валідним JSON масивом без пояснень, без markdown:
+[{"ukrainian":"йти","german":"gehen","article":""},{"ukrainian":"їхати","german":"fahren","article":""},...]
+Правила: інфінітив і українською і німецькою, article завжди "", без дублікатів, рівно ${bufferN} слів.`
+      : `Ти — вчитель німецької мови для початківців. Для теми "${topicNameUk}" (${topicNameDe || ''}) згенеруй рівно ${bufferN} простих іменників рівня A1-B1.
+КРИТИЧНО: ukrainian і german — ТОЧНІ переклади одне одного. Якщо перекласти german назад — має вийти саме ukrainian. Приклад: рейс → Flug (не Fahrt!), вокзал → Bahnhof (не Bahnhofshalle).
+МОВА: ukrainian — тільки ЛІТЕРАТУРНА УКРАЇНСЬКА. Категорично НЕ можна: російські слова, суржик, кальки з рос. Правильно: "намисто" (не "ожерелье"), "сережки" (не "серьги"), "каблучка/кільце" (не "кольцо"), "браслет" якщо немає кращого укр слова, "аксесуар" (не "аксессуар").
+Тільки найбільш вживане стандартне слово — не синоніми, не рідкісні варіанти, не складні композити. Рівень A1-B1.
+Ці слова вже є в словнику — НЕ включай: ${existingList}
+Відповідай ТІЛЬКИ валідним JSON масивом без пояснень, без markdown:
+[{"ukrainian":"кільце","german":"Ring","article":"der"},{"ukrainian":"намисто","german":"Halskette","article":"die"},...]
+Правила: german — ТІЛЬКИ однина Nominativ Singular (не множина!), з великої літери. Неправильно: "Ohrringe","Manschettenknöpfe" — правильно: "Ohrring","Manschettenknopf". ukrainian — теж однина. article обов'язково der/die/das, без дублікатів, рівно ${bufferN} слів.`;
     const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
+        temperature: 0.4,
         max_tokens: 4096,
       }),
     });
     if (!aiRes.ok) return res.status(502).json({ error: 'Groq error: ' + await aiRes.text() });
     const aiData = await aiRes.json();
     const rawText = aiData.choices?.[0]?.message?.content || '';
-    let words;
+    let aiWords;
     try {
-      words = JSON.parse(rawText.replace(/```json|```/g, '').trim());
-      if (!Array.isArray(words)) throw new Error('not array');
+      aiWords = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+      if (!Array.isArray(aiWords)) throw new Error('not array');
     } catch {
       return res.status(502).json({ error: 'Groq returned invalid JSON', raw: rawText.slice(0, 300) });
     }
 
-    // Step 2: Verify each word on verbformen.de/uk-de
+    // Hard dedup: remove any words AI generated that already exist in DB (belt-and-suspenders)
+    const deduped = aiWords.filter(w => {
+      const g = (w.german   || '').toLowerCase();
+      const u = (w.ukrainian || '').toLowerCase();
+      return g && u && !allExistingGerman.has(g) && !allExistingUkrainian.has(u);
+    });
+    // Also remove duplicate german words within the AI batch itself
+    const seenGerman = new Set();
+    const dedupedUniq = deduped.filter(w => {
+      const g = w.german.toLowerCase();
+      if (seenGerman.has(g)) return false;
+      seenGerman.add(g);
+      return true;
+    });
+    const trimmed = dedupedUniq.slice(0, n);
+
+    // Step 2: Verify/correct articles via verbformen.de DIRECT word page (static HTML, reliable).
     const verified = [];
-    for (const w of words) {
-      const searchWord = encodeURIComponent(w.ukrainian || w.german);
-      const url = `https://www.verbformen.de/uk-de/${searchWord}/`;
+    for (const w of trimmed) {
+      const ukWord    = (w.ukrainian || '').trim();
+      const germanWord = (w.german   || '').trim();
+      const aiArticle = (w.article   || '').trim().toLowerCase();
+      if (!ukWord || !germanWord) continue;
+
+      if (isVerbs) {
+        // Verbs have no article — trust AI
+        verified.push({ article: '', german: germanWord, ukrainian: ukWord, source: 'ai' });
+        continue;
+      }
+
+      // For nouns: verify word and article via Wiktionary
       try {
-        const r = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; educational-app/1.0)', 'Accept-Language': 'de,uk;q=0.9' },
-          signal: AbortSignal.timeout(5000),
-        });
-        if (r.ok) {
-          const html = await r.text();
-          let foundGerman = null;
-          let foundArticle = null;
-
-          const mainMatch = html.match(/<span[^>]*class="[^"]*rCnj[^"]*"[^>]*>([^<]+)<\/span>/i)
-            || html.match(/<h1[^>]*>.*?<b>([^<]+)<\/b>/i)
-            || html.match(/class="rInf"[^>]*>\s*([^<\s]+)/i);
-
-          if (mainMatch) {
-            const raw = mainMatch[1].trim();
-            const artMatch = raw.match(/^(der|die|das)\s+(.+)$/i);
-            if (artMatch) {
-              foundArticle = artMatch[1].toLowerCase();
-              foundGerman = artMatch[2].trim();
-            } else {
-              foundGerman = raw;
-            }
-          }
-
-          verified.push({
-            article: foundArticle || w.article || '',
-            german: foundGerman || w.german,
-            ukrainian: w.ukrainian,
-            source: foundGerman ? 'verbformen' : 'ai',
-          });
+        const wikitext = await fetchWiktionary(germanWord);
+        if (wikitext) {
+          const parsed = parseWiktionaryArticle(wikitext);
+          const finalGerman  = (parsed && parsed.nom_sg) ? parsed.nom_sg : germanWord;
+          const article      = parsed && parsed.article ? parsed.article : null;
+          const finalArticle = article || aiArticle;
+          verified.push({ article: finalArticle, german: finalGerman, ukrainian: ukWord, source: article ? 'wiktionary' : 'ai' });
         } else {
-          verified.push({ ...w, source: 'ai' });
         }
-      } catch {
-        verified.push({ ...w, source: 'ai' });
+      } catch(e) {
       }
       await new Promise(r => setTimeout(r, 300));
     }
 
-    res.json({ success: true, words: verified });
+    const found    = verified.filter(w => w.german);
+    const notFound = verified.filter(w => !w.german).map(w => w.ukrainian);
+
+    res.json({ success: true, words: found, notFound, total: n, parsed: found.length });
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── Parse verbformen.de ────────────────────────────────────────────────────
+// ── Parse word forms via Wiktionary ──────────────────────────────────────
 app.post('/api/parse-verbformen', requireAdmin, async (req, res) => {
   const { words, category } = req.body;
   if (!Array.isArray(words) || !words.length) return res.status(400).json({ error: 'words required' });
 
   const isVerbs = category === 'verbs';
   const results = [];
-  const errors = [];
+  const errors  = [];
 
   for (const word of words) {
-    const slug = isVerbs ? word.german : (word.german || word).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/\s+/g,'-');
-    const url = isVerbs
-      ? `https://www.verbformen.de/de-uk/konjugation/${encodeURIComponent(word.german)}.htm`
-      : `https://www.verbformen.de/de-uk/deklination/substantive/${encodeURIComponent(word.german)}.htm`;
-
+    const germanWord = word.german || word;
     try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; educational-app/1.0)',
-          'Accept-Language': 'de,uk;q=0.9',
-        },
-        signal: AbortSignal.timeout(8000),
-      });
-
-      if (!r.ok) { errors.push({ word: word.german, error: `HTTP ${r.status}` }); continue; }
-      const html = await r.text();
+      const wikitext = await fetchWiktionary(germanWord);
+      if (!wikitext) { errors.push({ word: germanWord, error: 'Не знайдено у Wiktionary' }); continue; }
 
       if (isVerbs) {
-        // Parse verb conjugation
-        const forms = {};
-        const ukForms = {};
-
-        // Helper: extract form by searching table cells
-        function extractVerb(tense, person, html) {
-          // verbformen.de uses rCnj class spans for conjugation
-          const patterns = {
-            'pras_ich': /Präsens[\s\S]*?ich\s+<[^>]*>([^<]+)<\/[^>]+>/,
-            'pras_du':  /Präsens[\s\S]*?du\s+<[^>]*>([^<]+)<\/[^>]+>/,
-          };
-          return null;
+        const parsed = parseWiktionaryVerb(wikitext);
+        if (!parsed || Object.values(parsed).filter(Boolean).length < 3) {
+          errors.push({ word: germanWord, error: 'Не вдалось розпарсити форми' }); continue;
         }
-
-        // Parse using regex on HTML structure of verbformen.de
-        // Präsens section
-        const prasMatch = html.match(/class="rCnj"[\s\S]*?Präsens([\s\S]*?)(?:Präteritum|Futur)/i);
-        if (prasMatch) {
-          const section = prasMatch[1];
-          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
-          const persons = ['ich','du','er','wir','ihr','sie'];
-          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`pras_${persons[i]}`] = f; });
-        }
-
-        // Präteritum section
-        const pratMatch = html.match(/Präteritum([\s\S]*?)(?:Futur|Konjunktiv)/i);
-        if (pratMatch) {
-          const section = pratMatch[1];
-          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
-          const persons = ['ich','du','er','wir','ihr','sie'];
-          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`prat_${persons[i]}`] = f; });
-        }
-
-        // Futur
-        const futMatch = html.match(/Futur I([\s\S]*?)(?:Futur II|Konjunktiv|$)/i);
-        if (futMatch) {
-          const section = futMatch[1];
-          const cells = [...section.matchAll(/<b[^>]*>([^<]+)<\/b>/gi)].map(m => m[1].trim()).filter(Boolean);
-          const persons = ['ich','du','er','wir','ihr','sie'];
-          cells.slice(0,6).forEach((f,i) => { if(persons[i]) forms[`fut_${persons[i]}`] = f; });
-        }
-
-        // Partizip II
-        const p2Match = html.match(/Partizip II[\s\S]*?<b[^>]*>([^<]+)<\/b>/i);
-        if (p2Match) forms.partizip2 = p2Match[1].trim();
-
-        // hilfsverb
-        forms.hilfsverb = html.includes('ist gegangen') || html.match(/\bsein\b.*?Hilfsverb/i) ? 'sein' : 'haben';
-
-        if (Object.keys(forms).length > 3) {
-          results.push({ german: word.german, forms, ukForms });
-        } else {
-          errors.push({ word: word.german, error: 'Не вдалось розпарсити форми' });
-        }
+        results.push({ german: germanWord, forms: parsed, ukForms: {} });
       } else {
-        // Parse noun declension
-        const forms = {};
-        const ukForms = {};
-
-        // verbformen.de noun table: Nom/Akk/Dat/Gen × Sg/Pl
-        const cases = ['nom','akk','dat','gen'];
-        const nums  = ['sg','pl'];
-
-        // Extract declension table
-        const tableMatch = html.match(/Deklination[\s\S]*?<table([\s\S]*?)<\/table>/i);
-        if (tableMatch) {
-          const rows = [...tableMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-          rows.forEach((row, ri) => {
-            if (ri === 0) return; // skip header
-            const cells = [...row[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)]
-              .map(c => c[1].replace(/<[^>]+>/g,'').trim());
-            const caseKey = cases[ri - 1];
-            if (caseKey) {
-              if (cells[1]) forms[`${caseKey}_sg`] = cells[1];
-              if (cells[2]) forms[`${caseKey}_pl`] = cells[2];
-            }
-          });
+        const parsed = parseWiktionaryArticle(wikitext);
+        if (!parsed || !parsed.nom_sg) {
+          errors.push({ word: germanWord, error: 'Не вдалось розпарсити відмінки' }); continue;
         }
-
-        // Ukrainian translations from de-uk page
-        const ukTableMatch = html.match(/uk[\s\S]*?<table([\s\S]*?)<\/table>/i);
-
-        if (Object.keys(forms).length >= 4) {
-          results.push({ german: word.german || word, forms, ukForms });
-        } else {
-          errors.push({ word: word.german || word, error: 'Не вдалось розпарсити відмінки' });
-        }
+        const forms = {
+          nom_sg: parsed.nom_sg, nom_pl: parsed.nom_pl,
+          gen_sg: parsed.gen_sg, gen_pl: parsed.gen_pl,
+          dat_sg: parsed.dat_sg, dat_pl: parsed.dat_pl,
+          akk_sg: parsed.akk_sg, akk_pl: parsed.akk_pl,
+        };
+        results.push({ german: germanWord, forms, ukForms: {} });
       }
-
-      // Rate limiting — wait 500ms between requests
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 300));
     } catch(e) {
-      errors.push({ word: word.german || word, error: e.message });
+      errors.push({ word: germanWord, error: e.message });
     }
   }
 
   res.json({ success: true, results, errors, total: words.length, parsed: results.length });
+});
+
+
+// ── Verify existing words via Wiktionary ──────────────────────────────────
+app.post('/api/verify-words', requireAdmin, async (req, res) => {
+  const { words } = req.body;
+  if (!Array.isArray(words) || !words.length) return res.status(400).json({ error: 'words required' });
+
+  const results = [];
+  for (const w of words) {
+    const germanWord = (w.german || '').trim();
+    const aiArticle  = (w.article || '').trim().toLowerCase();
+    if (!germanWord) { results.push({ ...w, status: 'skipped' }); continue; }
+
+    try {
+      const wikitext = await fetchWiktionary(germanWord);
+      if (wikitext) {
+        const parsed      = parseWiktionaryArticle(wikitext);
+        const finalGerman  = (parsed && parsed.nom_sg) ? parsed.nom_sg : germanWord;
+        const article      = parsed && parsed.article ? parsed.article : null;
+        const finalArticle = article || aiArticle;
+        const wordChanged    = finalGerman !== germanWord;
+        const articleChanged = article && article !== aiArticle;
+        results.push({
+          ...w,
+          german:  finalGerman,
+          article: finalArticle,
+          source:  article ? 'wiktionary' : 'ai',
+          wordChanged,
+          articleChanged,
+          originalGerman:  wordChanged    ? germanWord  : undefined,
+          originalArticle: articleChanged ? aiArticle   : undefined,
+        });
+      } else {
+        results.push({ ...w, source: 'not_found', notFound: true });
+      }
+    } catch(e) {
+      results.push({ ...w, source: 'error', error: e.message });
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  res.json({ success: true, results });
+});
+
+// ── Generate word forms via Wiktionary ────────────────────────────────────
+app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
+  const { topicId } = req.body;
+  if (!topicId) return res.status(400).json({ error: 'topicId required' });
+
+  const GROQ_KEY = process.env.GROQ_API_KEY;
+
+  try {
+    const topicDoc = await db.collection('topics').doc(topicId).get();
+    if (!topicDoc.exists) return res.status(404).json({ error: 'Topic not found' });
+    const topic = topicDoc.data();
+    const isVerbs = topic.category === 'verbs';
+    const words = topic.words || [];
+
+    const updatedWords = [];
+    const results = []; // detailed per-word results for UI
+
+    for (const w of words) {
+      const germanWord = (w.german || '').trim();
+      const ukrainian  = (w.ukrainian || '').trim();
+      if (!germanWord) { updatedWords.push(w); continue; }
+
+      let forms = null;
+      let ukForms = null;
+      let source = 'not_found';
+
+      // Step 1: Get German forms from Wiktionary
+      try {
+        const wikitext = await fetchWiktionary(germanWord);
+        if (wikitext) {
+          if (isVerbs) {
+            const parsed = parseWiktionaryVerb(wikitext);
+            if (parsed && parsed.pras_ich) {
+              // Build prat forms from prat_ich
+              const prat_ich = parsed.prat_ich || '';
+              const prat_wir = prat_ich.endsWith('te') ? prat_ich + 'n' : prat_ich ? prat_ich + 'en' : '';
+              forms = {
+                pras_ich: parsed.pras_ich,
+                pras_du:  parsed.pras_du,
+                pras_er:  parsed.pras_er,
+                pras_wir: parsed.pras_wir,
+                pras_ihr: parsed.pras_ihr,
+                pras_sie: parsed.pras_sie || parsed.pras_wir,
+                prat_ich,
+                prat_du:  prat_ich ? prat_ich + 'st' : '',
+                prat_er:  prat_ich,
+                prat_wir,
+                prat_ihr: prat_ich ? prat_ich + 't' : '',
+                prat_sie: prat_wir,
+                fut_ich:  `werde ${germanWord}`,
+                fut_du:   `wirst ${germanWord}`,
+                fut_er:   `wird ${germanWord}`,
+                fut_wir:  `werden ${germanWord}`,
+                fut_ihr:  `werdet ${germanWord}`,
+                fut_sie:  `werden ${germanWord}`,
+                partizip2: parsed.partizip2 || '',
+                hilfsverb: parsed.hilfsverb || 'haben',
+              };
+              source = 'wiktionary';
+            }
+          } else {
+            const parsed = parseWiktionaryArticle(wikitext);
+            if (parsed && parsed.article) {
+              const art = parsed.article;
+              const artAkk = art === 'die' ? 'die' : 'den';
+              const artDat = art === 'die' ? 'der' : 'dem';
+              const artGen = art === 'die' ? 'der' : 'des';
+              forms = {
+                nom_sg: `${art} ${parsed.nom_sg || germanWord}`,
+                akk_sg: `${artAkk} ${parsed.akk_sg || parsed.nom_sg || germanWord}`,
+                dat_sg: `${artDat} ${parsed.dat_sg || parsed.nom_sg || germanWord}`,
+                gen_sg: `${artGen} ${parsed.gen_sg || parsed.nom_sg || germanWord}`,
+                nom_pl: parsed.nom_pl ? `die ${parsed.nom_pl}` : '',
+                akk_pl: parsed.akk_pl ? `die ${parsed.akk_pl}` : (parsed.nom_pl ? `die ${parsed.nom_pl}` : ''),
+                dat_pl: parsed.dat_pl ? `den ${parsed.dat_pl}` : (parsed.nom_pl ? `den ${parsed.nom_pl}` : ''),
+                gen_pl: parsed.gen_pl ? `der ${parsed.gen_pl}` : (parsed.nom_pl ? `der ${parsed.nom_pl}` : ''),
+              };
+              source = 'wiktionary';
+            }
+          }
+        }
+      } catch(e) { source = 'error'; }
+
+      // Step 2: Generate ukForms via Groq (only if we have German forms and Groq key)
+      if (forms && GROQ_KEY) {
+        try {
+          const ukPrompt = isVerbs
+            ? `Для дієслова "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади для кожної форми.
+Відповідай ТІЛЬКИ валідним JSON без пояснень:
+{"pras_ich":"${ukrainian}ю","pras_du":"${ukrainian}єш","pras_er":"${ukrainian}є","pras_wir":"${ukrainian}ємо","pras_ihr":"${ukrainian}єте","pras_sie":"${ukrainian}ють","prat_ich":"${ukrainian}в","prat_du":"${ukrainian}в","prat_er":"${ukrainian}в","prat_wir":"${ukrainian}ли","prat_ihr":"${ukrainian}ли","prat_sie":"${ukrainian}ли","fut_ich":"буду ${ukrainian}ти","fut_du":"будеш ${ukrainian}ти","fut_er":"буде ${ukrainian}ти","fut_wir":"будемо ${ukrainian}ти","fut_ihr":"будете ${ukrainian}ти","fut_sie":"будуть ${ukrainian}ти","partizip2":"${ukrainian}ний"}
+Правила: точний переклад кожної форми українською, минулий час чоловічий рід.`
+            : `Для іменника "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади відмінків.
+Відповідай ТІЛЬКИ валідним JSON без пояснень:
+{"nom_sg":"${ukrainian}","akk_sg":"...","dat_sg":"...","gen_sg":"...","nom_pl":"...","akk_pl":"...","dat_pl":"...","gen_pl":"..."}
+Правила: правильне відмінювання українського слова "${ukrainian}" по відмінках (Н/З/Д/Р в однині та множині).`;
+
+          const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: ukPrompt }],
+              temperature: 0.1,
+              max_tokens: 500,
+            }),
+          });
+          if (groqRes.ok) {
+            const groqData = await groqRes.json();
+            const raw = groqData.choices?.[0]?.message?.content || '';
+            ukForms = JSON.parse(raw.replace(/```json|```/g, '').trim());
+          }
+        } catch(e) { ukForms = null; }
+      }
+
+      const updated = { ...w, forms: forms || w.forms || null, ukForms: ukForms || w.ukForms || null };
+      if (source === 'wiktionary') updated.article = updated.article || w.article;
+      updatedWords.push(updated);
+      results.push({ german: germanWord, ukrainian, source, hasForms: !!forms, hasUkForms: !!ukForms });
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    await db.collection('topics').doc(topicId).update({
+      words: updatedWords,
+      formsGeneratedAt: FV.serverTimestamp(),
+    });
+
+    const stats = {
+      found:    results.filter(r => r.source === 'wiktionary').length,
+      notFound: results.filter(r => r.source === 'not_found').length,
+      errors:   results.filter(r => r.source === 'error').length,
+      withUk:   results.filter(r => r.hasUkForms).length,
+    };
+
+    res.json({ success: true, stats, results, words: updatedWords });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Health check ───────────────────────────────────────────────────────────
