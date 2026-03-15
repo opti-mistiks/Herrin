@@ -1297,42 +1297,83 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
         }
       } catch(e) { source = 'error'; }
 
-      // Step 2: Generate ukForms via Groq (only if we have German forms and Groq key)
-      if (forms && GROQ_KEY) {
-        try {
-          const ukPrompt = isVerbs
-            ? `Для дієслова "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади для кожної форми.
-Відповідай ТІЛЬКИ валідним JSON без пояснень:
-{"pras_ich":"${ukrainian}ю","pras_du":"${ukrainian}єш","pras_er":"${ukrainian}є","pras_wir":"${ukrainian}ємо","pras_ihr":"${ukrainian}єте","pras_sie":"${ukrainian}ють","prat_ich":"${ukrainian}в","prat_du":"${ukrainian}в","prat_er":"${ukrainian}в","prat_wir":"${ukrainian}ли","prat_ihr":"${ukrainian}ли","prat_sie":"${ukrainian}ли","fut_ich":"буду ${ukrainian}ти","fut_du":"будеш ${ukrainian}ти","fut_er":"буде ${ukrainian}ти","fut_wir":"будемо ${ukrainian}ти","fut_ihr":"будете ${ukrainian}ти","fut_sie":"будуть ${ukrainian}ти","partizip2":"${ukrainian}ний"}
-Правила: точний переклад кожної форми українською, минулий час чоловічий рід.`
-            : `Для іменника "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади відмінків.
-Відповідай ТІЛЬКИ валідним JSON без пояснень:
-{"nom_sg":"${ukrainian}","akk_sg":"...","dat_sg":"...","gen_sg":"...","nom_pl":"...","akk_pl":"...","dat_pl":"...","gen_pl":"..."}
-Правила: правильне відмінювання українського слова "${ukrainian}" по відмінках (Н/З/Д/Р в однині та множині).`;
+      const updated = { ...w, forms: forms || w.forms || null, ukForms: w.ukForms || null };
+      if (source === 'wiktionary') updated.article = updated.article || w.article;
+      updatedWords.push(updated);
+      results.push({ german: germanWord, ukrainian, source, hasForms: !!forms, hasUkForms: false });
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    // Step 2: Generate ALL ukForms in ONE batch Groq request (avoids rate limit)
+    if (GROQ_KEY) {
+      try {
+        const wordsNeedingUk = updatedWords.filter(w => w.german && w.ukrainian);
+        if (wordsNeedingUk.length > 0) {
+          const wordList = wordsNeedingUk.map(w =>
+            isVerbs ? w.german : (w.article ? `${w.article} ${w.german}` : w.german)
+          ).join('\n');
+
+          const promptsDoc = await db.collection('settings').doc('prompts').get();
+          const promptsData = promptsDoc.exists ? promptsDoc.data() : {};
+          const systemPrompt = (isVerbs ? promptsData.verbs : promptsData.nouns)
+            ?? (isVerbs ? DEFAULT_PROMPTS.verbs : DEFAULT_PROMPTS.nouns);
 
           const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
             body: JSON.stringify({
               model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: ukPrompt }],
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Згенеруй форми для цих слів:\n${wordList}` },
+              ],
               temperature: 0.1,
-              max_tokens: 500,
+              max_tokens: 8192,
             }),
           });
+
           if (groqRes.ok) {
             const groqData = await groqRes.json();
             const raw = groqData.choices?.[0]?.message?.content || '';
-            ukForms = JSON.parse(raw.replace(/```json|```/g, '').trim());
-          }
-        } catch(e) { ukForms = null; }
-      }
+            let formsArray;
+            try {
+              formsArray = JSON.parse(raw.replace(/```json|```/g, '').trim());
+            } catch { formsArray = []; }
 
-      const updated = { ...w, forms: forms || w.forms || null, ukForms: ukForms || w.ukForms || null };
-      if (source === 'wiktionary') updated.article = updated.article || w.article;
-      updatedWords.push(updated);
-      results.push({ german: germanWord, ukrainian, source, hasForms: !!forms, hasUkForms: !!ukForms });
-      await new Promise(r => setTimeout(r, 400));
+            // Build ukForms map by german word
+            const ukFormsMap = {};
+            const aiFormsMap = {};
+            formsArray.forEach(item => {
+              if (item.german) {
+                if (item.ukForms) ukFormsMap[item.german.toLowerCase()] = item.ukForms;
+                if (item.forms)   aiFormsMap[item.german.toLowerCase()] = item.forms;
+              }
+            });
+
+            // Apply ukForms (and fallback AI forms) back to updatedWords
+            for (let i = 0; i < updatedWords.length; i++) {
+              const uw = updatedWords[i];
+              const key = (uw.german || '').toLowerCase();
+              if (ukFormsMap[key]) {
+                updatedWords[i] = { ...uw, ukForms: ukFormsMap[key] };
+                const ri = results.findIndex(r => r.german.toLowerCase() === key);
+                if (ri !== -1) results[ri].hasUkForms = true;
+              }
+              // If Wiktionary had no forms, use AI forms as fallback
+              if (!updatedWords[i].forms && aiFormsMap[key]) {
+                updatedWords[i] = { ...updatedWords[i], forms: aiFormsMap[key] };
+                const ri = results.findIndex(r => r.german.toLowerCase() === key);
+                if (ri !== -1) { results[ri].hasForms = true; results[ri].source = 'ai_fallback'; }
+              }
+            }
+          } else {
+            const errText = await groqRes.text();
+            console.error('Groq batch ukForms error:', groqRes.status, errText);
+          }
+        }
+      } catch(e) {
+        console.error('Groq batch ukForms exception:', e.message);
+      }
     }
 
     await db.collection('topics').doc(topicId).update({
