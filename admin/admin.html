@@ -479,6 +479,7 @@
   <div id="toast"></div>
 
 <script>
+  
 const BACKEND_URL = 'https://herrin.onrender.com';
 
 /* ════ Custom Confirm Dialog ════════════════════════════════ */
@@ -534,6 +535,7 @@ function route() {
   else if (page === 'scene-edit' && id) renderSceneEditor(id);
   else if (page === 'settings')         renderSettings();
   else if (page === 'prompts')          renderPrompts();
+  else if (page === 'grammar' && id)    renderGrammarTopic(id);
   else if (page === 'verbs')            renderVerbsList();
   else                                  renderNounsList();
 }
@@ -702,14 +704,18 @@ async function adminLogout() {
 /* ════ TOPICS LIST ══════════════════════════════════════════ */
 function filterTopicList(inputId, listId) {
   const q = document.getElementById(inputId)?.value.toLowerCase().trim() || '';
-  const topics = window._adminTopicsData || [];
+  // Use separate data stores for nouns vs verbs
+  const isVerbs = listId.includes('verbs');
+  const topics = isVerbs ? (window._adminVerbsData || []) : (window._adminNounsData || window._adminTopicsData || []);
   const list = document.getElementById(listId);
   if (!list) return;
   if (!q) { list.innerHTML = topics.map((t,i)=>topicRow(t,i)).join('') || '<div class="empty-state">Немає тем.</div>'; return; }
   const matched = topics.filter(t => {
+    const num = String(topics.indexOf(t) + 1);
     const inName = (t.name||'').toLowerCase().includes(q) || (t.nameUk||'').toLowerCase().includes(q);
     const inWords = (t.words||[]).some(w => (w.german||'').toLowerCase().includes(q) || (w.ukrainian||'').toLowerCase().includes(q));
-    return inName || inWords;
+    const inNum = num === q.trim();
+    return inName || inWords || inNum;
   });
   list.innerHTML = matched.length ? matched.map((t,i)=>topicRow(t,i)).join('') : `<div class="empty-state">Нічого не знайдено</div>`;
 }
@@ -740,6 +746,7 @@ async function renderNounsList() {
   const filtered = topics.filter(t => !t.category || t.category === 'nouns');
   _listUsedEmojis = new Set();
   window._adminTopicsData = filtered;
+  window._adminNounsData = filtered;
   shell(`
     <div class="top-bar">
       <div>
@@ -771,6 +778,7 @@ async function renderVerbsList() {
   const filtered = topics.filter(t => t.category === 'verbs');
   _listUsedEmojis = new Set();
   window._adminTopicsData = filtered;
+  window._adminVerbsData = filtered;
   shell(`
     <div class="top-bar">
       <div>
@@ -993,19 +1001,33 @@ async function renderEditor(id, defaultCategory = 'nouns') {
     </div>
     <div class="card" style="padding:28px;margin-bottom:24px">
       <input type="hidden" id="topic-category-hidden" value="${cat}" />
+      <div class="editor-section-title">
+        📖 Слова
         <span style="font-size:.8rem;color:var(--muted);font-weight:400" id="words-count-label"></span>
       </div>
       <div class="words-header">
         <span></span><span>Артикль</span><span>Слово (нім.)</span><span>Переклад (укр.)</span><span></span>
       </div>
       <div id="words-list"></div>
-      <div style="margin-top:12px">
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost" onclick="addWord()">+ Додати слово</button>
-        <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="openAutoGenerate()">🤖 Автогенерація</button>
+        <button class="btn btn-ghost btn-sm" onclick="addMultiple()">📋 Вставити список</button>
+        <button class="btn btn-ghost btn-sm" onclick="openAutoGenerate()">🤖 Автогенерація</button>
+        <button class="btn btn-ghost btn-sm" id="verify-wiki-btn" onclick="verifyWithWiktionary()">🔍 Перевірити Wiktionary</button>
+      </div>
+
+      <div id="verify-wiki-panel" style="display:none;margin-top:16px;border:1px solid var(--border);border-radius:var(--r);padding:20px">
+        <div style="font-family:var(--font-h);font-size:1rem;font-weight:700;margin-bottom:12px">🔍 Результати перевірки Wiktionary</div>
+        <div id="verify-wiki-status" style="font-size:.85rem;margin-bottom:12px;padding:10px 14px;background:var(--surface);border-radius:8px;color:var(--muted)"></div>
+        <div id="verify-wiki-results" style="font-size:.85rem;line-height:2;max-height:300px;overflow-y:auto"></div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" id="verify-apply-btn" onclick="applyWiktionaryVerification()" style="display:none">✅ Застосувати виправлення</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('verify-wiki-panel').style.display='none'">Закрити</button>
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-lg" onclick="nav('/')">Скасувати</button>
+    <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px;padding-bottom:32px">
+      <button class="btn btn-ghost btn-lg" onclick="nav('${backRoute}')">Скасувати</button>
       <button class="btn btn-primary btn-lg" id="save-btn" onclick="saveTopic()">
         ${id ? '💾 Зберегти зміни' : '🚀 Створити тему'}
       </button>
@@ -1029,7 +1051,7 @@ async function renderEditor(id, defaultCategory = 'nouns') {
       <div style="background:var(--card);border:1px solid var(--border2);border-radius:var(--r-lg);padding:28px;width:100%;max-width:520px">
         <div style="font-family:var(--font-h);font-size:1.1rem;font-weight:700;margin-bottom:16px">🤖 Автогенерація слів</div>
         <div style="color:var(--muted);font-size:.83rem;margin-bottom:16px;line-height:1.5">
-          AI згенерує слова для теми, verbformen.de перевірить переклади.
+          AI згенерує слова для теми, verbformen.de перевірить артиклі.
         </div>
         <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px">
           <div style="flex:1">
@@ -1264,9 +1286,10 @@ async function runAutoGenerate() {
     _autogenWords = data.words;
     const fromVerbformen = data.words.filter(w => w.source === 'verbformen').length;
     const fromAi = data.words.filter(w => w.source === 'ai').length;
+    const notFoundCount = data.notFound?.length || 0;
 
     statusEl.style.color = 'var(--green)';
-    statusEl.textContent = `✅ Згенеровано ${data.words.length} слів (verbformen.de: ${fromVerbformen} ✓, AI: ${fromAi} ⚠️)`;
+    statusEl.textContent = `✅ Знайдено ${data.parsed}/${data.total} слів на verbformen.de${notFoundCount ? ` | ❌ Не знайдено: ${data.notFound.join(', ')}` : ''}`;
 
     previewEl.style.display = 'block';
     previewEl.innerHTML = data.words.map(w => {
@@ -2300,111 +2323,196 @@ const COPY_PROMPTS = {
 
 async function renderPrompts() {
   currentSection = 'prompts';
-
-  // Load all topics for word lists
   shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'prompts');
   let topics = [];
   try { topics = await apiGet('/api/topics'); } catch {}
 
   const nouns = topics.filter(t => t.category !== 'verbs');
   const verbs = topics.filter(t => t.category === 'verbs');
-
-  // Зберігаємо теми глобально для динамічного оновлення селектів
   window._promptTopics = { nouns, verbs };
 
-  function topicOptions(list) {
-    return list.map((t, i) =>
-      `<option value="${t.id}">${i + 1}. ${escHtml(t.nameUk || t.name)}</option>`
-    ).join('');
+  const initType = _currentPromptType || 'nouns';
+  const initList = initType === 'verbs' ? verbs : nouns;
+
+  function grammarTopicCard(t, i) {
+    const hasAllForms = (t.words || []).length > 0 && (t.words || []).every(w => w.forms && Object.keys(w.forms).length > 3);
+    const hasSomeForms = !hasAllForms && (t.words || []).some(w => w.forms && Object.keys(w.forms).length > 0);
+    const badge = hasAllForms
+      ? `<span style="font-size:.72rem;font-weight:700;color:var(--green);background:#34d39922;padding:2px 8px;border-radius:99px">✓ форми є</span>`
+      : hasSomeForms
+      ? `<span style="font-size:.72rem;font-weight:700;color:var(--gold);background:#fbbf2422;padding:2px 8px;border-radius:99px">⚠️ частково</span>`
+      : `<span style="font-size:.72rem;font-weight:700;color:var(--muted);background:var(--surface);padding:2px 8px;border-radius:99px">— немає форм</span>`;
+    const emoji = t.emoji || '📚';
+    return `
+      <div class="topic-row" style="cursor:pointer;padding:14px 18px" onclick="openGrammarTopic('${t.id}')">
+        <div style="font-size:1.4rem;width:40px;text-align:center">${emoji}</div>
+        <div class="topic-row-info">
+          <div class="topic-row-name">${escHtml(t.nameUk || t.name)}</div>
+          <div class="topic-row-sub">${escHtml(t.name)} · ${(t.words||[]).length} слів</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${badge}
+        </div>
+      </div>`;
   }
 
-  const initList = _currentPromptType === 'verbs' ? verbs : nouns;
-
   shell(`
-    <div class="page-header" style="margin-bottom:28px">
+    <div class="page-header" style="margin-bottom:20px">
       <div>
         <div class="page-title">🧩 Форми відмінювання</div>
-        <div class="page-sub">Скопіюй промт → встав слова → отримай JSON → імпортуй</div>
+        <div class="page-sub">Wiktionary → нім. форми &nbsp;·&nbsp; uk.Wiktionary → укр. відмінки</div>
       </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:24px;max-width:860px">
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <button class="btn ${initType === 'nouns' ? 'btn-primary' : 'btn-ghost'}" id="gram-tab-nouns" onclick="switchGrammarTab('nouns')">📝 Іменники</button>
+      <button class="btn ${initType === 'verbs' ? 'btn-primary' : 'btn-ghost'}" id="gram-tab-verbs" onclick="switchGrammarTab('verbs')">🔤 Дієслова</button>
+    </div>
 
-      <!-- STEP 1: Get prompt -->
-      <div class="card" style="padding:28px">
-        <div class="editor-section-title">1️⃣ Скопіюй промт для нейромережі</div>
-        <div id="prompt-box">
-          <div style="position:relative">
-            <textarea class="input" id="prompt-text" readonly
-              style="height:200px;resize:none;font-family:monospace;font-size:.78rem;line-height:1.5;padding-right:110px"></textarea>
-            <button class="btn btn-primary btn-sm" id="copy-prompt-btn"
-              style="position:absolute;top:10px;right:10px"
-              onclick="copyPrompt()">📋 Копіювати</button>
-          </div>
-          <div style="color:var(--muted);font-size:.82rem;margin-top:8px">
-            👆 Встав цей промт у <strong style="color:var(--text)">Claude.ai</strong> або <strong style="color:var(--text)">ChatGPT</strong>, після тексту промта додай список слів (нижче)
-          </div>
-        </div>
-      </div>
+    <div style="margin-bottom:14px">
+      <input class="input" id="search-grammar" placeholder="🔍 Пошук по назві, слову або номеру…"
+        oninput="filterGrammarList()"
+        onkeydown="if(event.key==='Escape'){this.value='';filterGrammarList()}"
+        autocomplete="off" style="max-width:400px" />
+    </div>
 
-      <!-- STEP 2: Get word list -->
-      <div class="card" style="padding:28px">
-        <div class="editor-section-title">2️⃣ Отримай список слів</div>
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
-          <div style="flex:1;min-width:200px">
-            <label>Обери тему</label>
-            <select class="input" id="topic-select" onchange="loadTopicWords()">
-              <option value="">— Вибери тему —</option>
-              ${topicOptions(initList)}
-            </select>
-          </div>
-          <button class="btn btn-ghost" onclick="copyWordList()" id="copy-words-btn" style="display:none">📋 Копіювати слова</button>
-        </div>
-        <textarea class="input" id="words-output" readonly
-          style="height:140px;resize:none;font-family:monospace;font-size:.85rem;display:none"
-          placeholder="Тут з'явиться список слів..."></textarea>
-      </div>
+    <div id="grammar-topics-list" class="card" style="padding:0;overflow:hidden">
+      ${initList.length
+        ? initList.map((t,i) => grammarTopicCard(t,i)).join('<div style="height:1px;background:var(--border)"></div>')
+        : `<div style="padding:32px;text-align:center;color:var(--muted)">Немає тем</div>`}
+    </div>
 
-      <!-- STEP 3: Import JSON -->
-      <div class="card" style="padding:28px">
-        <div class="editor-section-title">3️⃣ Встав отриманий JSON</div>
-        <div style="color:var(--muted);font-size:.83rem;margin-bottom:14px;line-height:1.5">
-          Встав сюди відповідь нейромережі (JSON масив з формами). Буде імпортовано в тему обрану вище.
-        </div>
-        <textarea class="input" id="forms-json-input"
-          style="height:180px;resize:vertical;font-family:monospace;font-size:.8rem;line-height:1.5"
-          placeholder='[{"german":"kaufen","forms":{...}},...]'></textarea>
-        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-primary" onclick="importForms()">📥 Імпортувати форми</button>
-          <button class="btn btn-ghost" onclick="parseVerbformen()" id="parse-verbformen-btn">🌐 Завантажити з verbformen.de</button>
-        </div>
-        <div id="parse-verbformen-result" style="margin-top:8px;font-size:.83rem;min-height:16px;color:var(--muted)"></div>
-        <div id="import-result" style="margin-top:12px;font-size:.88rem;min-height:20px"></div>
-      </div>
+    <!-- Topic detail panel (shown when topic is selected) -->
+    <div id="grammar-topic-panel" style="display:none;margin-top:24px"></div>
 
-      <!-- STEP 4: Edit forms per word -->
+    <!-- Edit forms panel -->
+    <div id="grammar-edit-panel" style="display:none;margin-top:24px">
       <div class="card" style="padding:28px">
         <div class="editor-section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>4️⃣ Перегляд та редагування форм</span>
-          <button class="btn btn-ghost btn-sm" onclick="loadTopicForEdit()" title="Оновити">🔄</button>
-        </div>
-        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
-          <div style="flex:1;min-width:200px">
-            <label>Тема для редагування</label>
-            <select class="input" id="edit-topic-select" onchange="loadTopicForEdit()">
-              <option value="">— Вибери тему —</option>
-              ${topicOptions(initList)}
-            </select>
-          </div>
+          <span id="grammar-edit-title">📝 Форми</span>
+          <button class="btn btn-ghost btn-sm" onclick="reloadGrammarEdit()" title="Оновити">🔄</button>
         </div>
         <div id="forms-editor"></div>
       </div>
-
     </div>
   `, 'prompts');
 
-  // Автоматично показуємо промт для вибраного типу (nouns/verbs через nav dropdown)
-  setTimeout(() => showPromptFor(_currentPromptType), 0);
+  window._grammarTopicCards = grammarTopicCard;
+  setTimeout(() => filterGrammarList(), 0);
+}
+
+function filterGrammarList() {
+  const q = document.getElementById('search-grammar')?.value.toLowerCase().trim() || '';
+  const type = _currentPromptType || 'nouns';
+  const topics = window._promptTopics;
+  if (!topics) return;
+  const list = type === 'verbs' ? topics.verbs : topics.nouns;
+  const container = document.getElementById('grammar-topics-list');
+  if (!container) return;
+
+  const matched = q ? list.filter((t, i) => {
+    const num = String(i + 1);
+    const inName = (t.name||'').toLowerCase().includes(q) || (t.nameUk||'').toLowerCase().includes(q);
+    const inWords = (t.words||[]).some(w => (w.german||'').toLowerCase().includes(q) || (w.ukrainian||'').toLowerCase().includes(q));
+    return inName || inWords || num === q;
+  }) : list;
+
+  container.innerHTML = matched.length
+    ? matched.map((t,i) => window._grammarTopicCards(t,i)).join('<div style="height:1px;background:var(--border)"></div>')
+    : `<div style="padding:32px;text-align:center;color:var(--muted)">Нічого не знайдено</div>`;
+}
+
+function switchGrammarTab(type) {
+  _currentPromptType = type;
+  const topics = window._promptTopics;
+  if (!topics) return;
+
+  document.getElementById('gram-tab-nouns').className = `btn ${type === 'nouns' ? 'btn-primary' : 'btn-ghost'}`;
+  document.getElementById('gram-tab-verbs').className = `btn ${type === 'verbs' ? 'btn-primary' : 'btn-ghost'}`;
+
+  const search = document.getElementById('search-grammar');
+  if (search) search.value = '';
+
+  filterGrammarList();
+  document.getElementById('grammar-topic-panel')?.style && (document.getElementById('grammar-topic-panel').style.display = 'none');
+  document.getElementById('grammar-edit-panel')?.style && (document.getElementById('grammar-edit-panel').style.display = 'none');
+  _currentGrammarTopicId = null;
+}
+
+function openGrammarTopic(topicId) {
+  nav(`/grammar/${topicId}`);
+}
+
+async function renderGrammarTopic(topicId) {
+  currentSection = 'prompts';
+  shell(`<div class="loader-wrap"><div class="spinner"></div></div>`, 'prompts');
+
+  try {
+    const topic = await apiGet(`/api/topics/${topicId}`);
+    const hasAllForms = (topic.words||[]).length > 0 && (topic.words||[]).every(w => w.forms && Object.keys(w.forms).length > 3);
+    const backType = topic.category === 'verbs' ? 'verbs' : 'nouns';
+
+    shell(`
+      <div class="editor-header">
+        <button class="btn btn-ghost btn-sm" onclick="nav('/prompts');showPromptFor('${backType}')">← Назад</button>
+        <div class="page-title" style="margin-top:16px">${escHtml(topic.emoji||'📚')} ${escHtml(topic.nameUk||topic.name)}</div>
+        <div style="color:var(--muted);font-size:.85rem">${escHtml(topic.name)} · ${(topic.words||[]).length} слів</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <div class="card" style="padding:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+            <div class="editor-section-title" style="margin:0">🔄 Генерація форм</div>
+            <button class="btn btn-primary" id="gen-forms-btn" onclick="generateFormsWiktionary('${topicId}')">
+              ${hasAllForms ? '🔄 Оновити форми' : '🔄 Згенерувати форми'}
+            </button>
+          </div>
+          <div style="color:var(--muted);font-size:.83rem;margin-bottom:12px">
+            Wiktionary (нім.) + uk.Wiktionary (укр.) → автоматичні форми для всіх слів теми
+          </div>
+          <div id="wiktionary-gen-status" style="display:none;margin-bottom:12px;padding:12px 16px;background:var(--surface);border-radius:var(--r);font-size:.85rem"></div>
+          <div id="wiktionary-gen-list" style="display:none;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;max-height:280px;overflow-y:auto">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto auto;padding:8px 14px;font-size:.78rem;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.04em">
+              <span>Слово</span><span>Переклад</span><span style="text-align:center;padding:0 12px">Wiktionary</span><span style="text-align:center">Укр.</span>
+            </div>
+            <div id="wiktionary-gen-rows"></div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:24px">
+          <div class="editor-section-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>📝 Форми слів</span>
+            <button class="btn btn-ghost btn-sm" onclick="reloadGrammarEdit()" title="Оновити">🔄</button>
+          </div>
+          <div id="forms-editor"></div>
+        </div>
+      </div>
+    `, 'prompts');
+
+    _currentGrammarTopicId = topicId;
+    setTimeout(() => renderFormsEditor(topic), 0);
+
+  } catch(e) {
+    shell(`<div class="empty-state"><div style="font-size:2rem">❌</div><p>${escHtml(e.message)}</p></div>`, 'prompts');
+  }
+}
+
+function renderFormsEditor(topic) {
+  _editTopicData = topic;
+  // Use the existing renderFormsEditor (defined below) which uses _editTopicData
+  setTimeout(() => {
+    const fn = window._renderFormsEditorOrig;
+    if (fn) fn();
+  }, 0);
+}
+
+async function reloadGrammarEdit() {
+  if (!_currentGrammarTopicId) return;
+  try {
+    const topic = await apiGet(`/api/topics/${_currentGrammarTopicId}`);
+    renderFormsEditor(topic);
+  } catch(e) {}
 }
 
 let _currentPromptType = 'nouns';
@@ -2474,6 +2582,68 @@ function copyWordList() {
     const b = document.getElementById('copy-words-btn');
     if (b) { b.textContent = '✅ Скопійовано!'; setTimeout(() => { b.textContent = '📋 Копіювати слова'; }, 2000); }
   });
+}
+
+async function generateFormsWiktionary(topicId) {
+  const statusEl = document.getElementById('wiktionary-gen-status');
+  const listEl   = document.getElementById('wiktionary-gen-list');
+  const rowsEl   = document.getElementById('wiktionary-gen-rows');
+  const btn      = document.getElementById('gen-forms-btn');
+
+  if (!topicId) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Генерую...'; }
+  if (statusEl) { statusEl.style.display='block'; statusEl.style.color='var(--muted)'; statusEl.textContent='⏳ Завантажую форми з Wiktionary...'; }
+  if (listEl) listEl.style.display = 'none';
+
+  try {
+    const data = await apiFetch('/api/generate-forms-wiktionary', {
+      method: 'POST',
+      body: JSON.stringify({ topicId }),
+    });
+
+    if (!data.success) throw new Error(data.error || 'Помилка');
+
+    const { found, notFound, errors, withUk } = data.stats;
+    const total = (found || 0) + (notFound || 0) + (errors || 0);
+
+    if (statusEl) {
+      statusEl.style.color = notFound > 0 ? 'var(--gold)' : 'var(--green)';
+      statusEl.innerHTML = `
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <span>📊 Всього: <b>${total}</b></span>
+          <span style="color:var(--green)">✓ Wiktionary: <b>${found}</b></span>
+          <span style="color:var(--cyan)">🇺🇦 Укр. форми: <b>${withUk}</b></span>
+          ${notFound ? `<span style="color:var(--gold)">⚠️ Не знайдено: <b>${notFound}</b></span>` : ''}
+          ${errors ? `<span style="color:var(--red)">❌ Помилки: <b>${errors}</b></span>` : ''}
+        </div>`;
+    }
+
+    if (data.results && data.results.length && rowsEl && listEl) {
+      rowsEl.innerHTML = data.results.map((r, i) => {
+        const bg = i % 2 === 0 ? '' : 'background:var(--surface)';
+        const wikiIcon = r.source === 'wiktionary' ? `<span style="color:var(--green)">✓</span>`
+          : r.source === 'error' ? `<span style="color:var(--red)">❌</span>`
+          : `<span style="color:var(--muted)">—</span>`;
+        const ukIcon = r.hasUkForms ? `<span style="color:var(--cyan)">✓</span>` : `<span style="color:var(--muted)">—</span>`;
+        return `<div style="display:grid;grid-template-columns:1fr 1fr auto auto;padding:7px 14px;font-size:.83rem;${bg};border-bottom:1px solid var(--border)">
+          <span><b>${escHtml(r.german)}</b></span>
+          <span style="color:var(--muted)">${escHtml(r.ukrainian)}</span>
+          <span style="text-align:center;padding:0 12px">${wikiIcon}</span>
+          <span style="text-align:center">${ukIcon}</span>
+        </div>`;
+      }).join('');
+      listEl.style.display = 'block';
+    }
+
+    // Update forms editor in place
+    const freshTopic = await apiGet(`/api/topics/${topicId}`);
+    setTimeout(() => renderFormsEditor(freshTopic), 0);
+  } catch(e) {
+    if (statusEl) { statusEl.style.color='var(--red)'; statusEl.style.display='block'; statusEl.textContent='❌ Помилка: ' + e.message; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Оновити форми'; }
+  }
 }
 
 async function parseVerbformen() {
@@ -2617,6 +2787,7 @@ async function importForms() {
 
 // ── Forms editor per word ─────────────────────────────────────
 let _editTopicData = null;
+window._renderFormsEditorOrig = _renderFormsEditorImpl;
 
 async function loadTopicForEdit() {
   const topicId = document.getElementById('edit-topic-select')?.value;
@@ -2637,7 +2808,7 @@ const NOUN_LBLS  = ['Nom.Sg · Наз.одн.','Akk.Sg · Зн.одн.','Dat.Sg 
 const VERB_KEYS  = ['pras_ich','pras_du','pras_er','pras_wir','pras_ihr','pras_sie','prat_ich','prat_du','prat_er','prat_wir','prat_ihr','prat_sie','fut_ich','fut_du','fut_er','fut_wir','fut_ihr','fut_sie','partizip2','hilfsverb'];
 const VERB_LBLS  = ['Präs.ich','Präs.du','Präs.er','Präs.wir','Präs.ihr','Präs.sie','Prät.ich','Prät.du','Prät.er','Prät.wir','Prät.ihr','Prät.sie','Fut.ich','Fut.du','Fut.er','Fut.wir','Fut.ihr','Fut.sie','Partizip II','Hilfsverb'];
 
-function renderFormsEditor() {
+function _renderFormsEditorImpl() {
   const container = document.getElementById('forms-editor');
   if (!container || !_editTopicData) return;
   const isVerbs = _editTopicData.category === 'verbs';
@@ -2934,6 +3105,97 @@ async function saveSettings() {
   }
   btn.disabled = false;
   btn.textContent = '💾 Зберегти всі налаштування';
+}
+
+let _wikiVerifyResults = [];
+
+function syncEditorWords() {
+  document.querySelectorAll('.form-row').forEach((row, i) => {
+    const inputs = row.querySelectorAll('input');
+    if (editorWords[i]) {
+      editorWords[i].article   = inputs[0]?.value.trim() || '';
+      editorWords[i].german    = inputs[1]?.value.trim() || '';
+      editorWords[i].ukrainian = inputs[2]?.value.trim() || '';
+    }
+  });
+}
+
+async function verifyWithWiktionary() {
+  syncEditorWords();
+  const words = editorWords.filter(w => w.german && w.ukrainian);
+  if (!words.length) { toast('❌ Немає слів для перевірки', 'error'); return; }
+
+  const panel    = document.getElementById('verify-wiki-panel');
+  const statusEl  = document.getElementById('verify-wiki-status');
+  const resultsEl = document.getElementById('verify-wiki-results');
+  const applyBtn  = document.getElementById('verify-apply-btn');
+
+  panel.style.display = 'block';
+  applyBtn.style.display = 'none';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = `⏳ Перевіряємо ${words.length} слів через Wiktionary...`;
+  resultsEl.innerHTML = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  const btn = document.getElementById('verify-wiki-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Перевірка...';
+
+  try {
+    const data = await apiFetch('/api/verify-words', {
+      method: 'POST',
+      body: JSON.stringify({ words }),
+    });
+
+    _wikiVerifyResults = data.results;
+    const changed  = data.results.filter(r => r.wordChanged || r.articleChanged);
+    const notFound = data.results.filter(r => r.notFound);
+    const verified = data.results.filter(r => r.source === 'wiktionary');
+
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = `✅ Перевірено: ${verified.length} знайдено | ${changed.length} виправлено | ${notFound.length} не знайдено`;
+
+    if (changed.length === 0 && notFound.length === 0) {
+      resultsEl.innerHTML = '<span style="color:var(--green)">✓ Всі слова правильні, виправлень немає.</span>';
+    } else {
+      resultsEl.innerHTML = data.results.map(r => {
+        if (r.notFound) return `<div>❌ <b>${escHtml(r.german)}</b> — не знайдено у Wiktionary</div>`;
+        if (r.source === 'error') return `<div>⚠️ <b>${escHtml(r.german)}</b> — помилка</div>`;
+        const parts = [];
+        if (r.wordChanged)    parts.push(`слово: <s style="color:var(--red)">${escHtml(r.originalGerman)}</s> → <b style="color:var(--green)">${escHtml(r.german)}</b>`);
+        if (r.articleChanged) parts.push(`артикль: <s style="color:var(--red)">${escHtml(r.originalArticle)}</s> → <b style="color:var(--green)">${escHtml(r.article)}</b>`);
+        if (parts.length) return `<div>✏️ <b>${escHtml(r.german)}</b> (${escHtml(r.ukrainian)}) — ${parts.join(', ')}</div>`;
+        return `<div style="color:var(--muted)">✓ <b>${escHtml(r.german)}</b> — OK</div>`;
+      }).join('');
+    }
+
+    if (changed.length > 0) applyBtn.style.display = '';
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '❌ Помилка: ' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Перевірити Wiktionary';
+  }
+}
+
+function applyWiktionaryVerification() {
+  syncEditorWords();
+  let applied = 0;
+  for (const r of _wikiVerifyResults) {
+    if (!r.wordChanged && !r.articleChanged) continue;
+    const searchWord = r.originalGerman || r.german;
+    const idx = editorWords.findIndex(w => w.german === searchWord);
+    if (idx !== -1) {
+      editorWords[idx].german  = r.german;
+      editorWords[idx].article = r.article;
+      applied++;
+    }
+  }
+  renderWordsList();
+  document.getElementById('verify-wiki-panel').style.display = 'none';
+  toast(`✅ Застосовано ${applied} виправлень`, 'success');
+  _wikiVerifyResults = [];
 }
 </script>
 </body>
