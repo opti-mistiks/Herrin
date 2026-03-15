@@ -958,9 +958,8 @@ function getWikiField(block, key) {
 }
 
 function parseWiktionaryArticle(wikitext) {
-  const m = wikitext.match(/\{\{Deutsch Substantiv Übersicht([\s\S]*?)\}\}/);
-  if (!m) return null;
-  const block = m[1];
+  const block = extractWikiTemplate(wikitext, 'Deutsch Substantiv Übersicht');
+  if (!block) return null;
   const g = getWikiField(block, 'Genus') || getWikiField(block, 'Genus 1');
   const articleMap = { m: 'der', f: 'die', n: 'das', Maskulinum: 'der', Femininum: 'die', Neutrum: 'das' };
   return {
@@ -976,10 +975,24 @@ function parseWiktionaryArticle(wikitext) {
   };
 }
 
+function extractWikiTemplate(wikitext, templateName) {
+  // Find template start
+  const start = wikitext.indexOf('{{' + templateName);
+  if (start === -1) return null;
+  // Walk forward counting {{ and }} to find the real closing }}
+  let depth = 0;
+  let i = start;
+  while (i < wikitext.length) {
+    if (wikitext[i] === '{' && wikitext[i+1] === '{') { depth++; i += 2; continue; }
+    if (wikitext[i] === '}' && wikitext[i+1] === '}') { depth--; i += 2; if (depth === 0) return wikitext.slice(start + 2 + templateName.length, i - 2); continue; }
+    i++;
+  }
+  return null; // unclosed template
+}
+
 function parseWiktionaryVerb(wikitext) {
-  const m = wikitext.match(/\{\{Deutsch Verb Übersicht([\s\S]*?)\}\}/);
-  if (!m) return null;
-  const block = m[1];
+  const block = extractWikiTemplate(wikitext, 'Deutsch Verb Übersicht');
+  if (!block) return null;
   const pras_ich = getWikiField(block, 'Präsens_ich');
   const pras_wir = getWikiField(block, 'Präsens_wir') || (pras_ich ? pras_ich.replace(/e$/, 'en') : null);
   const hilfs = getWikiField(block, 'Hilfsverb') || '';
@@ -1297,18 +1310,51 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
         }
       } catch(e) { source = 'error'; }
 
-      // Step 2: Generate ukForms via Groq (only if we have German forms and Groq key)
-      if (forms && GROQ_KEY) {
+      // Step 2: If Wiktionary failed — use Groq as fallback for German forms too
+      if (!forms && GROQ_KEY) {
+        try {
+          const fallbackPrompt = isVerbs
+            ? `Ти — експерт з німецької граматики. Для дієслова "${germanWord}" (${ukrainian}) згенеруй всі форми.
+Відповідай ТІЛЬКИ валідним JSON без пояснень:
+{"forms":{"pras_ich":"...","pras_du":"...","pras_er":"...","pras_wir":"...","pras_ihr":"...","pras_sie":"...","prat_ich":"...","prat_du":"...","prat_er":"...","prat_wir":"...","prat_ihr":"...","prat_sie":"...","fut_ich":"werde ${germanWord}","fut_du":"wirst ${germanWord}","fut_er":"wird ${germanWord}","fut_wir":"werden ${germanWord}","fut_ihr":"werdet ${germanWord}","fut_sie":"werden ${germanWord}","partizip2":"...","hilfsverb":"haben"},"ukForms":{"pras_ich":"...","pras_du":"...","pras_er":"...","pras_wir":"...","pras_ihr":"...","pras_sie":"...","prat_ich":"...","prat_du":"...","prat_er":"...","prat_wir":"...","prat_ihr":"...","prat_sie":"...","fut_ich":"...","fut_du":"...","fut_er":"...","fut_wir":"...","fut_ihr":"...","fut_sie":"...","partizip2":"..."}}
+Правила: точні нім. форми + правильний укр. переклад кожної форми.`
+            : `Ти — експерт з нім. та укр. граматики. Для іменника "${germanWord}" (${ukrainian}) згенеруй всі форми.
+Відповідай ТІЛЬКИ валідним JSON без пояснень:
+{"forms":{"nom_sg":"...","akk_sg":"...","dat_sg":"...","gen_sg":"...","nom_pl":"...","akk_pl":"...","dat_pl":"...","gen_pl":"..."},"ukForms":{"nom_sg":"...","akk_sg":"...","dat_sg":"...","gen_sg":"...","nom_pl":"...","akk_pl":"...","dat_pl":"...","gen_pl":"..."}}
+Правила: форми з артиклем, ukForms — правильне відмінювання "${ukrainian}" українською.`;
+
+          const fallbackRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: fallbackPrompt }],
+              temperature: 0.1,
+              max_tokens: 800,
+            }),
+          });
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            const raw = fallbackData.choices?.[0]?.message?.content || '';
+            const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+            if (parsed.forms) { forms = parsed.forms; source = 'ai'; }
+            if (parsed.ukForms) ukForms = parsed.ukForms;
+          }
+        } catch(e) { /* fallback failed, keep nulls */ }
+      }
+
+      // Step 3: Generate ukForms via Groq (if we have German forms but no ukForms yet)
+      if (forms && !ukForms && GROQ_KEY) {
         try {
           const ukPrompt = isVerbs
             ? `Для дієслова "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади для кожної форми.
 Відповідай ТІЛЬКИ валідним JSON без пояснень:
-{"pras_ich":"${ukrainian}ю","pras_du":"${ukrainian}єш","pras_er":"${ukrainian}є","pras_wir":"${ukrainian}ємо","pras_ihr":"${ukrainian}єте","pras_sie":"${ukrainian}ють","prat_ich":"${ukrainian}в","prat_du":"${ukrainian}в","prat_er":"${ukrainian}в","prat_wir":"${ukrainian}ли","prat_ihr":"${ukrainian}ли","prat_sie":"${ukrainian}ли","fut_ich":"буду ${ukrainian}ти","fut_du":"будеш ${ukrainian}ти","fut_er":"буде ${ukrainian}ти","fut_wir":"будемо ${ukrainian}ти","fut_ihr":"будете ${ukrainian}ти","fut_sie":"будуть ${ukrainian}ти","partizip2":"${ukrainian}ний"}
+{"pras_ich":"...","pras_du":"...","pras_er":"...","pras_wir":"...","pras_ihr":"...","pras_sie":"...","prat_ich":"...","prat_du":"...","prat_er":"...","prat_wir":"...","prat_ihr":"...","prat_sie":"...","fut_ich":"...","fut_du":"...","fut_er":"...","fut_wir":"...","fut_ihr":"...","fut_sie":"...","partizip2":"..."}
 Правила: точний переклад кожної форми українською, минулий час чоловічий рід.`
             : `Для іменника "${germanWord}" (${ukrainian}) згенеруй ТІЛЬКИ українські переклади відмінків.
 Відповідай ТІЛЬКИ валідним JSON без пояснень:
 {"nom_sg":"${ukrainian}","akk_sg":"...","dat_sg":"...","gen_sg":"...","nom_pl":"...","akk_pl":"...","dat_pl":"...","gen_pl":"..."}
-Правила: правильне відмінювання українського слова "${ukrainian}" по відмінках (Н/З/Д/Р в однині та множині).`;
+Правила: правильне відмінювання "${ukrainian}" по відмінках (Н/З/Д/Р в однині та множині).`;
 
           const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
