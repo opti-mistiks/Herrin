@@ -794,6 +794,40 @@ const DEFAULT_PROMPTS = {
 Слова:`,
 };
 
+// ── Groq helper with model fallback ───────────────────────────────────────
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'gemma2-9b-it',
+];
+
+async function groqWithFallback(GROQ_KEY, body) {
+  let lastError = '';
+  for (const model of GROQ_MODELS) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+        body: JSON.stringify({ ...body, model }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`✅ Groq model used: ${model}`);
+        return data;
+      }
+      const errText = await res.text();
+      lastError = `${model}: ${res.status} ${errText}`;
+      console.warn(`⚠️ Groq fallback — ${lastError}`);
+      // Only retry on rate limit (429), fail fast on other errors
+      if (res.status !== 429) break;
+    } catch (e) {
+      lastError = `${model}: ${e.message}`;
+      console.warn(`⚠️ Groq fallback exception — ${lastError}`);
+    }
+  }
+  throw new Error(`All Groq models failed. Last error: ${lastError}`);
+}
+
 app.get('/api/prompts', requireAdmin, async (req, res) => {
   try {
     const doc = await db.collection('settings').doc('prompts').get();
@@ -843,27 +877,21 @@ app.post('/api/generate-forms', requireAdmin, async (req, res) => {
       isVerbs ? w.german : (w.article ? `${w.article} ${w.german}` : w.german)
     ).join('\n');
 
-    // 4. Call Groq API
-    const aiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+    // 4. Call Groq API (with model fallback)
+    let aiData;
+    try {
+      aiData = await groqWithFallback(GROQ_KEY, {
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Згенеруй форми для цих слів:\n${wordList}` },
         ],
         temperature: 0.1,
         max_tokens: 8192,
-      }),
-    });
-
-    if (!aiRes.ok) {
-      const err = await aiRes.text();
-      return res.status(502).json({ error: `Groq API error: ${err}` });
+      });
+    } catch (e) {
+      return res.status(502).json({ error: e.message });
     }
 
-    const aiData = await aiRes.json();
     const rawText = aiData.choices?.[0]?.message?.content || '';
 
     // 5. Parse JSON
@@ -1318,22 +1346,22 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
           const systemPrompt = (isVerbs ? promptsData.verbs : promptsData.nouns)
             ?? (isVerbs ? DEFAULT_PROMPTS.verbs : DEFAULT_PROMPTS.nouns);
 
-          const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
+          let groqData;
+          try {
+            groqData = await groqWithFallback(GROQ_KEY, {
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: `Згенеруй форми для цих слів:\n${wordList}` },
               ],
               temperature: 0.1,
               max_tokens: 8192,
-            }),
-          });
+            });
+          } catch(e) {
+            console.error('Groq batch ukForms all models failed:', e.message);
+            groqData = null;
+          }
 
-          if (groqRes.ok) {
-            const groqData = await groqRes.json();
+          if (groqData) {
             const raw = groqData.choices?.[0]?.message?.content || '';
             let formsArray;
             try {
@@ -1366,9 +1394,6 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
                 if (ri !== -1) { results[ri].hasForms = true; results[ri].source = 'ai_fallback'; }
               }
             }
-          } else {
-            const errText = await groqRes.text();
-            console.error('Groq batch ukForms error:', groqRes.status, errText);
           }
         }
       } catch(e) {
