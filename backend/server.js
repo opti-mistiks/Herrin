@@ -950,7 +950,6 @@ function getWikiField(block, key) {
       return val
         .replace(/<[^>]+>/g, '')
         .replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1')
-        .replace(/\{\{[^}]*\}\}/g, '')   // strip {{templates}} like {{Erg|...}}
         .replace(/'{2,}/g, '')
         .trim() || null;
     }
