@@ -1263,7 +1263,12 @@
   // Auto-detects origin — works for localhost, LAN IPs (192.168/172.16/10.x), and production HTTPS.
   // On localhost or private-network IPs, appends :3001 (dev backend port).
   // In production the backend runs on the same host/port as the frontend.
-  const BACKEND_URL = 'https://herrin.onrender.com';
+  const BACKEND_URL = (() => {
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1'
+      || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^10\./.test(h);
+    return isLocal ? `http://${h}:3001` : '';
+  })();
 
   // Prevent browser from restoring scroll position on hash navigation
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -1939,7 +1944,7 @@
           Herrin
         </div>
         <div style="font-size:.78rem;color:var(--muted);margin-bottom:24px;letter-spacing:.06em;text-transform:uppercase;font-weight:600">
-          Версія 1.0
+          Demo 1.0
         </div>
         <div style="
           background:var(--surface);border:1px solid var(--border);border-radius:14px;
@@ -1948,7 +1953,8 @@
         ">
           Herrin — застосунок для вивчення <strong style="color:var(--text)">німецької мови</strong> в ігровому форматі.<br><br>
           Картки, диктанти, режим швидкості та онлайн-дуелі з друзями — усе щоб навчання було цікавим, а не нудним.<br><br>
-          <span style="color:var(--muted);font-size:.82rem">⚠️ Сервіс працює на безкоштовному хостингу. Після тривалої неактивності можливі короткочасні зависання при першому запиті — це нормально, зачекайте кілька секунд.</span>
+          <span style="color:var(--muted);font-size:.82rem">⚠️ Сервіс працює на безкоштовному хостингу. Після тривалої неактивності можливі короткочасні зависання при першому запиті — це нормально, зачекайте кілька секунд.</span><br><br>
+          Розробник Levchenko Artem, @opti_mistiks
         </div>
         <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:.75rem;text-align:center;flex:1">

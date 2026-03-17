@@ -972,7 +972,8 @@ function getWikiField(block, key) {
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx === -1) continue;
     const fieldName = trimmed.slice(1, eqIdx).trim();
-    if (fieldName === key) {
+    const normalize = s => s.replace(/,\s*/g, ',').toLowerCase();
+    if (normalize(fieldName) === normalize(key)) {
       const val = trimmed.slice(eqIdx + 1).trim();
       // Strip wiki markup: <tags>, [[links|display]], ''bold''
       return val
@@ -1011,12 +1012,16 @@ function parseWiktionaryVerb(wikitext) {
   const pras_ich = getWikiField(block, 'Präsens_ich');
   const pras_wir = getWikiField(block, 'Präsens_wir') || (pras_ich ? pras_ich.replace(/e$/, 'en') : null);
   const hilfs = getWikiField(block, 'Hilfsverb') || '';
+  // Wiktionary field: 'Präsens_er, sie, es' (with spaces after commas)
+  const pras_er  = getWikiField(block, 'Präsens_er, sie, es') || getWikiField(block, 'Präsens_er,sie,es') || getWikiField(block, 'Präsens_er');
+  // Wiktionary has no separate 'ihr' field — for most verbs ihr = er (both end in -t)
+  const pras_ihr = getWikiField(block, 'Präsens_ihr') || pras_er;
   return {
     pras_ich,
     pras_du:   getWikiField(block, 'Präsens_du'),
-    pras_er:   getWikiField(block, 'Präsens_er'),
+    pras_er,
     pras_wir,
-    pras_ihr:  getWikiField(block, 'Präsens_ihr'),
+    pras_ihr,
     pras_sie:  getWikiField(block, 'Präsens_sie') || pras_wir,
     prat_ich:  getWikiField(block, 'Präteritum_ich'),
     partizip2: getWikiField(block, 'Partizip II'),
@@ -1419,6 +1424,25 @@ app.post('/api/generate-forms-wiktionary', requireAdmin, async (req, res) => {
   }
 });
 
+
+// ── Debug: raw Wiktionary wikitext (admin only) ───────────────────────────
+app.get('/api/debug/wiktionary', requireAdmin, async (req, res) => {
+  const word = req.query.word;
+  if (!word) return res.status(400).json({ error: 'word required' });
+  try {
+    const wikitext = await fetchWiktionary(word);
+    if (!wikitext) return res.json({ found: false });
+    // Extract just the verb/noun template block
+    const verbMatch = wikitext.match(/\{\{Deutsch Verb Übersicht([\s\S]*?)\}\}/);
+    const nounMatch = wikitext.match(/\{\{Deutsch Substantiv Übersicht([\s\S]*?)\}\}/);
+    res.json({
+      found: true,
+      verbBlock: verbMatch ? verbMatch[1] : null,
+      nounBlock: nounMatch ? nounMatch[1] : null,
+      parsed: verbMatch ? parseWiktionaryVerb(wikitext) : (nounMatch ? parseWiktionaryArticle(wikitext) : null),
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // ── Health check ───────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true }));
 
