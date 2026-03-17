@@ -484,7 +484,7 @@ const BACKEND_URL = (() => {
     const h = window.location.hostname;
     const isLocal = h === 'localhost' || h === '127.0.0.1'
       || /^192\.168\./.test(h) || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^10\./.test(h);
-    return isLocal ? `http://${h}:3001` : '';
+    return isLocal ? `http://${h}:3001` : 'https://herrin.onrender.com';
   })();
 
 /* ════ Custom Confirm Dialog ════════════════════════════════ */
